@@ -72,8 +72,9 @@ def OnInput(text: string)
 
   const cmd = ['curl', 'https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
 
+  const buf = bufnr()
   b:askgpt_job = job_start(cmd, {
-    callback: (ch: channel, resp: string) => OnResponse(bufnr(), resp),
+    callback: (ch: channel, resp: string) => OnResponse(buf, resp),
   })
 
   const prompt = [{
