@@ -57,6 +57,11 @@ COMMANDS                                                     *askgpt-commands*
 	:%AskGPT translate it to English
 >
 
+:[range]AskGPT! [{message}]                                         *:AskGPT!*
+	Open or focus a chat window.
+	It clear all chat history if there is a chat buffer already.
+	Other behaviors are the same as |:AskGPT|.
+
 ------------------------------------------------------------------------------
 OPTIONS                                                       *askgpt-options*
 
