@@ -30,19 +30,19 @@ export def Init(query='', range: dict<any> = null_dict)
 
   set filetype=markdown buftype=prompt bufhidden=delete
 
-  if range != null
-    ShareRange(bufnr(), range)
-  endif
-
   # delete previous prompt.
   exec ':$-1delete'
 
-  append(line('$') - 1, '__User__')
+  if query == ''
+    ShareRange(bufnr(), line('$') - 1, range)
+    append(line('$') - 1, '__User__')
+  else
+    append(line('$') - 1, ['__User__', query, ''])
 
-  if query != ''
-    append(line('$') - 1, query)
     PushHistory(bufnr(), 'user', query)
-    OnInput(query)
+    ShareRange(bufnr(), line('$') - 1, range)
+
+    Submit(query)
   endif
 
   prompt_setprompt(bufnr(), '')
@@ -83,7 +83,11 @@ def GetHistorySize(): number
   return 10
 enddef
 
-def ShareRange(buf: number, range: dict<any>)
+def ShareRange(buf: number, lnum: number, range: dict<any>)
+  if range == null
+    return
+  endif
+
   PushHistory(buf, 'system', join([
     'User has shared you a part of current editing file.',
     'You can ask user to provide more if you needed.',
@@ -98,7 +102,6 @@ def ShareRange(buf: number, range: dict<any>)
     '```',
   ], "\n"))
 
-  const lnum = line('$') - 2
   append(max([0, lnum]), [
     '__Share__',
     'name: ' .. range.fname,
@@ -108,7 +111,7 @@ def ShareRange(buf: number, range: dict<any>)
   ] + range.content + [
     '```',
     '',
-  ] + (lnum < 0 ? [''] : []))
+  ])
 enddef
 
 def OnInput(text: string)
@@ -126,6 +129,10 @@ def OnInput(text: string)
 
   PushHistory(bufnr(), 'user', query)
 
+  Submit(text)
+enddef
+
+def Submit(text: string)
   append(line('$') - 1, [
     '',
     '__Assistant__',
@@ -140,7 +147,7 @@ def OnInput(text: string)
     timer_start(100, (id: number) => UpdateIndicator(buf))
   endif
 
-  const cmd = GetCurlCommand() + ['curl', 'https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
+  const cmd = GetCurlCommand() + ['https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
   #const cmd = ['sh', '-c', "sleep 1; echo '" .. '{"choices":[{"message":{"role":"assistant","content":"hello world"}}]}' .. "'"]
   #const cmd = ['cat', '-']
 
