@@ -16,6 +16,10 @@ export def Open(query='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
     if exists('b:askgpt_history')
       unlet b:askgpt_history
     endif
+    if exists('b:askgpt_job') && b:askgpt_job != null
+      job_stop(b:askgpt_job)
+      unlet b:askgpt_job
+    endif
     exec ':%delete'
   endif
 
@@ -96,12 +100,10 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
   const quote = repeat('`', max([3, maxquote + 1]))
 
   PushHistory(buf, 'system', join([
-    'User has shared you a part of current editing file.',
-    'You can ask user to provide more if you needed.',
+    "Answer user's question using the following information.",
     '',
-    'source file name: ' .. range.fname,
-    '',
-    'shared range: from line ' .. range.from .. ' to line ' .. range.to .. ' out of ' .. range.total .. 'lines',
+    'source name: ' .. range.fname,
+    'lines: from ' .. range.from .. ' to ' .. range.to .. ' out of ' .. range.total .. 'lines',
     '',
     'content:',
     quote .. range.ftype,
@@ -133,6 +135,7 @@ def OnInput(text: string)
 
   if exists('b:askgpt_job') && b:askgpt_job != null
     job_stop(b:askgpt_job)
+    unlet b:askgpt_job
     exec ':$-5,$-3delete'
     exec ':$'
   endif
@@ -170,13 +173,12 @@ def Submit(text: string)
   const prompt = [{
     role: 'system',
     content: join([
-      'You are an AI chat assistant embedded in a text editor Vim.',
-      'You help your user with brief and clear responses.',
-      'The chat is written in Markdown syntax.',
-    ], "\n"),
-  }, {
-    role: 'system',
-    content: join([
+      'You are AskGPT.vim, an AI assistant to assist user through a conversation.',
+      'Do answer user very succinctly and clearly.',
+      'Keep each line as up to 80 characters as possible.',
+      '',
+      'The syntax of this chat: markdown',
+      'Usage of AskGPT.vim: see `:help askgpt`',
       'File types that user is editing now: ' .. GetEditingFileTypes()->join(', '),
     ], "\n"),
   }]
