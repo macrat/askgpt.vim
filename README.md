@@ -32,16 +32,23 @@ g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
 
 ## ヒントと注意事項
 
-- `:AskGPT`を実行したウィンドウの内容はChatGPTに送信されますので、「この関数は何？」や「この文章を翻訳して」といった依頼をすることができます。
+- `:[range]AskGPT`として範囲付きでコマンドを実行すると、その範囲をChatGPTにシェアすることができます。
 
-- OpenAIに送信されると困るファイルの上では`:AskGPT`を実行しないように注意してください。
+  * コードについて質問したいときは、ビジュアルモードで選択してから`:'<,'>AskGPT`のように起動すると便利です。
 
-- 元のウィンドウで開かれているファイルを全て解析するので、巨大なファイルを開いている場合はトークン量が膨大になるおそれがあります。注意して使用してください。
+  * `:%AskGPT`のようにすれば、コード全体について質問できます。
 
+- `:AskGPT [聞きたいこと]`のように実行すると、コマンドから直接質問を入力できます。
+
+- デフォルトでは過去10件のメッセージと共有したコードがChatGPT APIに送信されます。文字数等での上限は設けていませんので、APIの使用状況に注意しながら利用してください。
+
+  * APIに送信するメッセージの件数は`g:askgpt_history_size`で変更できます。
+
+  * メッセージ履歴は`:AskGPT!`で削除できます。
 
 ---
 
-A plugin for Vim that incorporates ChatGPT to allow you to ask questions about your code.
+A plugin that integrates ChatGPT into Vim to let you ask questions about your code.
 
 __Note__: This is an experimental plugin and has not been thoroughly tested, so please use it with caution.
 
@@ -55,21 +62,29 @@ __Note__: This is an experimental plugin and has not been thoroughly tested, so 
 
 ## How to use
 
-1. Set the API key in your vimrc.
+1. Set your OpenAI API key in your vimrc.
 
 ```vim
 g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
 ```
 
-2. Launch Vim and open the chat window with `:AskGPT`.
+2. Open Vim and use the `:AskGPT` command to open the chat window.
 
-3. Type in what you want to ask and press enter.
+3. Enter your question and press Enter.
 
 
-## Tips and notes
+## Hints and Cautions
 
-- The contents of the window where `:AskGPT` is executed are sent to ChatGPT, so you can make requests such as "What is this function?" and "Translate this sentence".
+- You can share a range with ChatGPT by executing the `:[range]AskGPT` command.
 
-- Be careful not to execute `:AskGPT` on files that should not be sent to OpenAI.
+  * When you want to ask about a piece of code, it's convenient to select it in Visual mode and execute the `:'<,'>AskGPT` command.
 
-- It analyzes all files open in the original window, so if you have a large file open, the number of tokens may become enormous. Use with caution.
+  * You can ask a question about the whole file by executing the `:%AskGPT` command.
+
+- You can enter your question directly from the command line by executing the `:AskGPT [your question]` command.
+
+- By default, the last 10 messages and shared code will be sent to the ChatGPT API. There is no limit on the number of characters, so use it carefully.
+
+  * You can change the number of messages to send through `g:askgpt_history_size`.
+
+  * The message history can be deleted with `:AskGPT!`.

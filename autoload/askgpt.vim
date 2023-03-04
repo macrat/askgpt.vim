@@ -2,28 +2,62 @@ vim9script
 
 const indicators = '▖▌▘▀▝▐▗▄'
 
-export def Init()
-  if !exists('g:askgpt_api_key')
-    echoerr 'Please set g:askgpt_api_key before use this plugin.'
-    return
+export def Open(query='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
+  const range = useRange ? NewRange(rangeFrom, rangeTo) : null_dict
+
+  const existwin = bufwinnr('askgpt://')
+  if existwin < 0
+    exec 'silent new askgpt://'
+  else
+    exec ':' .. existwin .. 'wincmd w'
   endif
 
-  const winid = win_getid()
-  exec 'vert rightb new askgpt://' .. winid
-  b:askgpt_winid = winid
-  if winwidth(0) > 40
-    vert resize 40
+  if wipe
+    if exists('b:askgpt_history')
+      unlet b:askgpt_history
+    endif
+    exec ':%delete'
+  endif
+
+  Init(query, range)
+enddef
+
+export def Init(query='', range: dict<any> = null_dict)
+  if !exists('g:askgpt_api_key')
+    echoerr 'Please set g:askgpt_api_key before use AskGPT.vim.'
+    return
   endif
 
   set filetype=markdown buftype=prompt
 
-  if !exists('b:askgpt_history')
-    b:askgpt_history = []
+  if range != null
+    ShareRange(bufnr(), range)
   endif
 
-  append(0, '__User__')
+  # delete previous prompt.
+  exec ':$-1delete'
+
+  append(line('$') - 1, '__User__')
+
+  if query != ''
+    append(line('$') - 1, query)
+    PushHistory(bufnr(), 'user', query)
+    OnInput(query)
+  endif
+
   prompt_setprompt(bufnr(), '')
   prompt_setcallback(bufnr(), OnInput)
+enddef
+
+def NewRange(from: number, to: number): dict<any>
+  return {
+    fname: expand('%'),
+    ftype: &filetype,
+    from: from,
+    to: to,
+    total: line('$'),
+    content: getline(from, to),
+  }
 enddef
 
 def PushHistory(buf: number, role: string, content: string)
@@ -34,11 +68,47 @@ def PushHistory(buf: number, role: string, content: string)
     content: content,
   }]
 
-  if len(hs) > 6
-    hs = hs[len(hs) - 6 :]
+  const maxhs = GetHistorySize()
+  if len(hs) > maxhs
+    hs = hs[len(hs) - maxhs :]
   endif
 
   setbufvar(buf, 'askgpt_history', hs)
+enddef
+
+def GetHistorySize(): number
+  if exists('g:askgpt_history_size')
+    return g:askgpt_history_size
+  endif
+  return 10
+enddef
+
+def ShareRange(buf: number, range: dict<any>)
+  PushHistory(buf, 'system', join([
+    'User has shared you a part of current editing file.',
+    'You can ask user to provide more if you needed.',
+    '',
+    'source file name: ' .. range.fname,
+    '',
+    'shared range: from line ' .. range.from .. ' to line ' .. range.to .. ' out of ' .. range.total .. 'lines',
+    '',
+    'content:',
+    '```' .. range.ftype,
+  ] + range.content + [
+    '```',
+  ], "\n"))
+
+  const lnum = line('$') - 2
+  append(max([0, lnum]), [
+    '__Share__',
+    'name: ' .. range.fname,
+    'line: ' .. range.from .. '-' .. range.to .. '/' .. range.total,
+    '',
+    '```' .. range.ftype,
+  ] + range.content + [
+    '```',
+    '',
+  ] + (lnum < 0 ? [''] : []))
 enddef
 
 def OnInput(text: string)
@@ -71,6 +141,8 @@ def OnInput(text: string)
   endif
 
   const cmd = ['curl', 'https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
+  #const cmd = ['sh', '-c', "sleep 1; echo '" .. '{"choices":[{"message":{"role":"assistant","content":"hello world"}}]}' .. "'"]
+  #const cmd = ['cat', '-']
 
   const buf = bufnr()
   b:askgpt_job = job_start(cmd, {
@@ -79,19 +151,15 @@ def OnInput(text: string)
 
   const prompt = [{
     role: 'system',
-    content: "You are an AI assistant embedded in a text editor Vim.\nYou help your user with short and clear responses in Markdown syntax.\nYour user normally ask about the content around the cursor line.",
+    content: join([
+      'You are an AI chat assistant embedded in a text editor Vim.',
+      'You help your user with brief and clear responses.',
+      'The chat is written in Markdown syntax.',
+    ], "\n"),
   }, {
     role: 'system',
     content: join([
-      'current file name is: ' .. trim(win_execute(b:askgpt_winid, ':echo expand("%")')),
-      '',
-      'cursor position is: line=' .. line('.', b:askgpt_winid) .. ' column=' .. charcol('.', b:askgpt_winid) .. ':',
-      '> ' .. getbufoneline(winbufnr(b:askgpt_winid), line('.', b:askgpt_winid)),
-      '',
-      'file content is:',
-      '```' .. getwinvar(b:askgpt_winid, '&filetype'),
-    ] + getbufline(winbufnr(b:askgpt_winid), 0, '$') + [
-      '```',
+      'File types that user is editing now: ' .. GetEditingFileTypes()->join(', '),
     ], "\n"),
   }]
 
@@ -103,7 +171,13 @@ def OnInput(text: string)
   ch_close_in(channel)
 enddef
 
+def GetEditingFileTypes(): list<string>
+  return getwininfo()->map((_, win) => getwinvar(win['winid'], '&ft'))->sort()->uniq()
+enddef
+
 def OnResponse(buf: number, resp: string)
+  const lastline = getbufinfo(buf)[0]['linecount']
+
   var content = ''
 
   try
@@ -112,10 +186,10 @@ def OnResponse(buf: number, resp: string)
     content = msg['content']
     PushHistory(buf, msg['role'], content)
   catch
+    setbufline(buf, lastline - 4, '__Error__')
     content = "Unexpected response:\n```json\n" .. resp .. "\n```"
   endtry
 
-  const lastline = getbufinfo(buf)[0]['linecount']
   deletebufline(buf, lastline - 3)
   appendbufline(buf, lastline - 4, split(content, "\n"))
 
