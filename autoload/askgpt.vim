@@ -37,10 +37,14 @@ export def Init(query='', range: dict<any> = null_dict)
     ShareRange(bufnr(), line('$') - 1, range)
     append(line('$') - 1, '__User__')
   else
-    append(line('$') - 1, ['__User__', query, ''])
-
+    append(line('$') - 1, ['__User__', query])
     PushHistory(bufnr(), 'user', query)
-    ShareRange(bufnr(), line('$') - 1, range)
+
+    if range != null
+      append(line('$') - 1, '')
+      ShareRange(bufnr(), line('$') - 1, range)
+      exec ':$-1delete'
+    endif
 
     Submit(query)
   endif
@@ -149,11 +153,12 @@ def Submit(text: string)
 
   const cmd = GetCurlCommand() + ['https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
   #const cmd = ['sh', '-c', "sleep 1; echo '" .. '{"choices":[{"message":{"role":"assistant","content":"hello world"}}]}' .. "'"]
-  #const cmd = ['cat', '-']
+  #const cmd = ['sh', '-c', 'sleep 1; cat -; exit 1']
 
   const buf = bufnr()
   b:askgpt_job = job_start(cmd, {
     callback: (ch: channel, resp: string) => OnResponse(buf, resp),
+    exit_cb: (job: job, status: number) => OnExit(buf, status),
   })
 
   const prompt = [{
@@ -201,7 +206,13 @@ def OnResponse(buf: number, resp: string)
     PushHistory(buf, msg['role'], content)
   catch
     setbufline(buf, lastline - 4, '__Error__')
-    content = "Unexpected response:\n```json\n" .. resp .. "\n```"
+    var resptype = 'json'
+    try
+      json_decode(resp)
+    catch
+      resptype = ''
+    endtry
+    content = "Unexpected response:\n```" .. resptype .. "\n" .. resp .. "\n```"
   endtry
 
   deletebufline(buf, lastline - 3)
@@ -210,17 +221,34 @@ def OnResponse(buf: number, resp: string)
   setbufvar(buf, 'askgpt_job', null)
 enddef
 
-def UpdateIndicator(buf: number)
-    if getbufvar(buf, 'askgpt_job', null) == null
-      setbufvar(buf, 'askgpt_indicator_count', null)
-      return
-    endif
+def OnExit(buf: number, status: number)
+  const job = getbufvar(buf, 'askgpt_job', null_job)
 
-    const i = (getbufvar(buf, 'askgpt_indicator_count', 0) + 1) % strchars(indicators)
-    setbufvar(buf, 'askgpt_indicator_count', i)
-
+  if status > 0
     const lastline = getbufinfo(buf)[0]['linecount']
-    setbufline(buf, lastline - 3, indicators[i])
 
-    timer_start(100, (id: number) => UpdateIndicator(buf))
+    appendbufline(buf, lastline - 3, 'Exit status: ' .. status)
+    if job != null && job_status(job) != 'run'
+      deletebufline(buf, lastline - 3)
+    endif
+  endif
+
+  if job != null && job_status(job) != 'run'
+    setbufvar(buf, 'askgpt_job', null)
+  endif
+enddef
+
+def UpdateIndicator(buf: number)
+  if getbufvar(buf, 'askgpt_job', null) == null
+    setbufvar(buf, 'askgpt_indicator_count', null)
+    return
+  endif
+
+  const i = (getbufvar(buf, 'askgpt_indicator_count', 0) + 1) % strchars(indicators)
+  setbufvar(buf, 'askgpt_indicator_count', i)
+
+  const lastline = getbufinfo(buf)[0]['linecount']
+  setbufline(buf, lastline - 3, indicators[i])
+
+  timer_start(100, (id: number) => UpdateIndicator(buf))
 enddef
