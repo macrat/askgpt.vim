@@ -140,7 +140,7 @@ def OnInput(text: string)
     timer_start(100, (id: number) => UpdateIndicator(buf))
   endif
 
-  const cmd = ['curl', 'https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
+  const cmd = GetCurlCommand() + ['curl', 'https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
   #const cmd = ['sh', '-c', "sleep 1; echo '" .. '{"choices":[{"message":{"role":"assistant","content":"hello world"}}]}' .. "'"]
   #const cmd = ['cat', '-']
 
@@ -169,6 +169,13 @@ def OnInput(text: string)
     messages: prompt + b:askgpt_history,
   }))
   ch_close_in(channel)
+enddef
+
+def GetCurlCommand(): list<string>
+  if exists('g:askgpt_curl_command')
+    return g:askgpt_curl_command
+  endif
+  return ['curl']
 enddef
 
 def GetEditingFileTypes(): list<string>
