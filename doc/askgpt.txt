@@ -1,0 +1,97 @@
+*askgpt.txt*	Ask ChatGPT antyhing in you Vim.
+                                                                  *AskGPT.vim*
+
+------------------------------------------------------------------------------
+INTRODUCTION                                             *askgpt-introduction*
+
+This plugin provides you a chat companion similar to the ChatGPT web interface,
+rather than typical AI plugin for text completion.
+You can start a conversation by typing |:AskGPT| and ask anything!
+
+Here are some ideas you can use this plugin:
+
+  * Ask about your code, the meaning of a function, or for usage examples.
+
+  * Get help to improve your document, proofread it, or changing its tone.
+
+  * Translate a document or code into another language.
+
+  * Ask to do tasks like doing a calculation, or format markdown table.
+
+  * Or just for a casual chat, of course!
+
+------------------------------------------------------------------------------
+INSTALL                                                       *askgpt-install*
+
+1. Install askgpt.vim plugin using your favorite plugin manager.
+
+2. Add settings to your vimrc.
+>
+	" OpenAI API key.
+	let g:askgpt_api_key = 'xxxxxxxxxxxxxxxx'
+
+	" (Optional) Path to curl command.
+	let g:askgpt_curl_command = ['curl']
+
+3. Start vim and try |:AskGPT|.
+
+------------------------------------------------------------------------------
+COMMANDS                                                     *askgpt-commands*
+
+:[range]AskGPT [{message}]                                           *:AskGPT*
+	Open or focus a chat window.
+
+	The {message} will be sent as your message in the chat window, And
+	ChatGPT will answer to it.
+
+	If [range] provided, the contents in the range will be shared with
+	ChatGPT to ask about content.
+
+	For example, to ask about your code, select function in |Visual| mode
+	and execute like:
+>
+	:'<,'>AskGPT what is this function?
+<
+	To translate whole document, execute like:
+>
+	:%AskGPT translate it to English
+>
+
+------------------------------------------------------------------------------
+OPTIONS                                                       *askgpt-options*
+
+*g:askgpt_api_key*
+	Type: |String|
+
+	An OpenAI API key.
+	You can get one from https://platform.openai.com/.
+
+*g:askgpt_history_size*
+	Type: |Number|
+	Default: 10
+
+	The maximum number of history to provide to ChatGPT.
+	The number includes your messages, AI's messages, and codes that you
+	shared via |:AskGPT| command.
+
+	To make it larger provides more information to AI, but it comsumes a
+	lot of tokens that you have to pay for them.
+	To make it smaller provides less information, and it costs less.
+
+*g:askgpt_curl_command*
+	Type: |List| of |String|s
+	Default: ["curl"]
+
+	Command to execute curl.
+
+	For example, if you are using Windows, you may want to use curl.exe: >
+		let g:askgpt_curl_command = ["curl.exe"]
+<
+	Or if you need to use proxy, you can use --proxy option of curl: >
+		let g:askgpt_curl_command = [
+			\ "curl",
+			\ "--proxy", "http://example.com",
+			\ ]
+
+------------------------------------------------------------------------------
+vim:tw=78:isk=!-~,^*,^\|,^\":ts=8:noet:ft=help:norl:

@@ -22,7 +22,7 @@ English version of readme (that was translated via this plugin!), follows Japane
 1. vimrcでAPIキーを設定する。
 
 ```vim
-g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
+let g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
 ```
 
 2. Vimを起動して、`:AskGPT`でチャットウィンドウを開く。
@@ -65,7 +65,7 @@ __Note__: This is an experimental plugin and has not been thoroughly tested, so 
 1. Set your OpenAI API key in your vimrc.
 
 ```vim
-g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
+let g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
 ```
 
 2. Open Vim and use the `:AskGPT` command to open the chat window.
