@@ -113,12 +113,15 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
     '__Share__',
     'name: ' .. range.fname,
     'line: ' .. range.from .. '-' .. range.to .. '/' .. range.total,
-    '',
+    'content:',
     quote .. range.ftype,
   ] + range.content + [
     quote,
     '',
   ])
+
+  exec ':' .. (lnum + 5) .. ',' .. (lnum + 6 + len(range.content)) .. 'fold'
+  norm zb
 enddef
 
 def OnInput(text: string)
