@@ -28,7 +28,7 @@ export def Init(query='', range: dict<any> = null_dict)
     return
   endif
 
-  set filetype=markdown buftype=prompt
+  set filetype=markdown buftype=prompt bufhidden=delete
 
   if range != null
     ShareRange(bufnr(), range)
