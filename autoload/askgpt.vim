@@ -92,6 +92,9 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
     return
   endif
 
+  const maxquote = range.content->join("\n")->matchlist('```\+')->map((_, x) => strchars(x))->max()
+  const quote = repeat('`', max([3, maxquote + 1]))
+
   PushHistory(buf, 'system', join([
     'User has shared you a part of current editing file.',
     'You can ask user to provide more if you needed.',
@@ -101,9 +104,9 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
     'shared range: from line ' .. range.from .. ' to line ' .. range.to .. ' out of ' .. range.total .. 'lines',
     '',
     'content:',
-    '```' .. range.ftype,
+    quote .. range.ftype,
   ] + range.content + [
-    '```',
+    quote,
   ], "\n"))
 
   append(max([0, lnum]), [
@@ -111,9 +114,9 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
     'name: ' .. range.fname,
     'line: ' .. range.from .. '-' .. range.to .. '/' .. range.total,
     '',
-    '```' .. range.ftype,
+    quote .. range.ftype,
   ] + range.content + [
-    '```',
+    quote,
     '',
   ])
 enddef
