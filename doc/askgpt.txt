@@ -62,6 +62,9 @@ COMMANDS                                                     *askgpt-commands*
 	It clear all chat history if there is a chat buffer already.
 	Other behaviors are the same as |:AskGPT|.
 
+:AskGPTRetry                                                    *:AskGPTRetry*
+	Generate last AI message again.
+
 ------------------------------------------------------------------------------
 OPTIONS                                                       *askgpt-options*
 

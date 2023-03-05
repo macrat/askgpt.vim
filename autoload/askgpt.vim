@@ -50,11 +50,31 @@ export def Init(query='', range: dict<any> = null_dict)
       exec ':$-1delete'
     endif
 
-    Submit(query)
+    Submit()
   endif
 
   prompt_setprompt(bufnr(), '')
   prompt_setcallback(bufnr(), OnInput)
+enddef
+
+export def Retry()
+  Open()
+
+  if b:askgpt_job != null && job_status(b:askgpt_job) == 'run'
+    echoe 'Cannot retry while generating message.'
+    return
+  endif
+
+  if len(b:askgpt_history) <= 1
+    echoe 'There is nothing to retry.'
+    return
+  endif
+
+  b:askgpt_history = b:askgpt_history[: -1]
+  :$-1,$delete
+
+  Submit()
+  append(line('$') - 5, '*retry*')
 enddef
 
 def NewRange(from: number, to: number): dict<any>
@@ -77,8 +97,9 @@ def PushHistory(buf: number, role: string, content: string)
   }]
 
   const maxhs = GetHistorySize()
-  if len(hs) > maxhs
-    hs = hs[len(hs) - maxhs :]
+  if len(hs) > maxhs + 1
+    # retain maxhs + 1 for :AskGPTRetry
+    hs = hs[-maxhs - 1 :]
   endif
 
   setbufvar(buf, 'askgpt_history', hs)
@@ -142,10 +163,10 @@ def OnInput(text: string)
 
   PushHistory(bufnr(), 'user', query)
 
-  Submit(text)
+  Submit()
 enddef
 
-def Submit(text: string)
+def Submit()
   append(line('$') - 1, [
     '',
     '__Assistant__',
@@ -168,6 +189,9 @@ def Submit(text: string)
   b:askgpt_job = job_start(cmd, {
     callback: (ch: channel, resp: string) => OnResponse(buf, resp),
     exit_cb: (job: job, status: number) => OnExit(buf, status),
+    in_mode: 'json',
+    out_mode: 'raw',
+    err_mode: 'raw',
   })
 
   const prompt = [{
@@ -186,7 +210,7 @@ def Submit(text: string)
   const channel = job_getchannel(b:askgpt_job)
   ch_sendraw(channel, json_encode({
     model: 'gpt-3.5-turbo',
-    messages: prompt + b:askgpt_history,
+    messages: prompt + b:askgpt_history[-min([len(b:askgpt_history), GetHistorySize()]) : ],
   }))
   ch_close_in(channel)
 enddef
