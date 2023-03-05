@@ -7,7 +7,7 @@ export def Open(query='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
 
   const existwin = bufwinnr('askgpt://')
   if existwin < 0
-    exec 'silent new askgpt://'
+    silent new askgpt://
   else
     exec ':' .. existwin .. 'wincmd w'
   endif
@@ -20,7 +20,7 @@ export def Open(query='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
       job_stop(b:askgpt_job)
       unlet b:askgpt_job
     endif
-    exec ':%delete'
+    :%delete
   endif
 
   Init(query, range)
@@ -35,7 +35,7 @@ export def Init(query='', range: dict<any> = null_dict)
   set filetype=markdown buftype=prompt bufhidden=delete
 
   # delete previous prompt.
-  exec ':$-1delete'
+  :$-1delete
 
   if query == ''
     ShareRange(bufnr(), line('$') - 1, range)
@@ -47,7 +47,7 @@ export def Init(query='', range: dict<any> = null_dict)
     if range != null
       append(line('$') - 1, '')
       ShareRange(bufnr(), line('$') - 1, range)
-      exec ':$-1delete'
+      :$-1delete
     endif
 
     Submit()
@@ -55,6 +55,8 @@ export def Init(query='', range: dict<any> = null_dict)
 
   prompt_setprompt(bufnr(), '')
   prompt_setcallback(bufnr(), OnInput)
+
+  norm zb
 enddef
 
 export def Retry()
@@ -121,7 +123,7 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
   const quote = repeat('`', max([3, maxquote + 1]))
 
   PushHistory(buf, 'system', join([
-    "Answer question using the following information.",
+    'Answer question using the following information.',
     '',
     'source name: ' .. range.fname,
     'lines: from ' .. range.from .. ' to ' .. range.to .. ' out of ' .. range.total .. 'lines',
@@ -150,15 +152,15 @@ enddef
 def OnInput(text: string)
   const query = trim(text)
   if query == ''
-    exec ':$-1delete'
+    :$-1delete
     return
   endif
 
   if exists('b:askgpt_job') && b:askgpt_job != null
     job_stop(b:askgpt_job)
     unlet b:askgpt_job
-    exec ':$-5,$-3delete'
-    exec ':$'
+    :$-5,$-3delete
+    :$
   endif
 
   PushHistory(bufnr(), 'user', query)
@@ -227,15 +229,15 @@ def GetEditingFileTypes(): list<string>
 enddef
 
 def OnResponse(buf: number, resp: string)
-  const lastline = getbufinfo(buf)[0]['linecount']
+  const lastline = getbufinfo(buf)[0].linecount
 
   var content = ''
 
   try
-    const msg = json_decode(resp)['choices'][0]['message']
+    const msg = json_decode(resp).choices[0].message
 
-    content = msg['content']
-    PushHistory(buf, msg['role'], content)
+    content = msg.content
+    PushHistory(buf, msg.role, content)
   catch
     setbufline(buf, lastline - 4, '__Error__')
     var resptype = 'json'
@@ -257,7 +259,7 @@ def OnExit(buf: number, status: number)
   const job = getbufvar(buf, 'askgpt_job', null_job)
 
   if status > 0
-    const lastline = getbufinfo(buf)[0]['linecount']
+    const lastline = getbufinfo(buf)[0].linecount
 
     appendbufline(buf, lastline - 3, 'Exit status: ' .. status)
     if job != null && job_status(job) != 'run'
@@ -279,7 +281,7 @@ def UpdateIndicator(buf: number)
   const i = (getbufvar(buf, 'askgpt_indicator_count', 0) + 1) % strchars(indicators)
   setbufvar(buf, 'askgpt_indicator_count', i)
 
-  const lastline = getbufinfo(buf)[0]['linecount']
+  const lastline = getbufinfo(buf)[0].linecount
   setbufline(buf, lastline - 3, indicators[i])
 
   timer_start(100, (id: number) => UpdateIndicator(buf))
