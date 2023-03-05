@@ -100,7 +100,7 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
   const quote = repeat('`', max([3, maxquote + 1]))
 
   PushHistory(buf, 'system', join([
-    "Answer user's question using the following information.",
+    "Answer question using the following information.",
     '',
     'source name: ' .. range.fname,
     'lines: from ' .. range.from .. ' to ' .. range.to .. ' out of ' .. range.total .. 'lines',
@@ -173,13 +173,13 @@ def Submit(text: string)
   const prompt = [{
     role: 'system',
     content: join([
-      'You are AskGPT.vim, an AI assistant to assist user through a conversation.',
-      'Do answer user very succinctly and clearly.',
-      'Keep each line as up to 80 characters as possible.',
+      'You are AskGPT.vim, an AI assistant for conversation.',
+      'Answer very succinctly and clearly, in Markdown.',
+      'Keep answer shorter than 80 characters per line.',
       '',
-      'The syntax of this chat: markdown',
       'Usage of AskGPT.vim: see `:help askgpt`',
-      'File types that user is editing now: ' .. GetEditingFileTypes()->join(', '),
+      'File types that user is editing: ' .. GetEditingFileTypes()->join(', '),
+      'Current date: ' .. strftime('%Y-%m-%d %A'),
     ], "\n"),
   }]
 
@@ -199,7 +199,7 @@ def GetCurlCommand(): list<string>
 enddef
 
 def GetEditingFileTypes(): list<string>
-  return getwininfo()->map((_, win) => getwinvar(win['winid'], '&ft'))->sort()->uniq()
+  return getwininfo()->filter((_, win) => bufname(win.bufnr) !~ '^askgpt://')->map((_, win) => getwinvar(win.winid, '&ft'))->sort()->uniq()
 enddef
 
 def OnResponse(buf: number, resp: string)
