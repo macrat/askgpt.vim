@@ -234,7 +234,7 @@ def OnResponse(buf: number, resp: string)
   var content = ''
 
   try
-    const msg = json_decode(resp).choices[0].message
+    const msg: dict<string> = json_decode(resp).choices[0].message
 
     content = msg.content
     PushHistory(buf, msg.role, content)
