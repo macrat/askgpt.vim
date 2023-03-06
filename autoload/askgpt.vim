@@ -16,7 +16,7 @@ export def Open(query='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
     if exists('b:askgpt_history')
       unlet b:askgpt_history
     endif
-    if exists('b:askgpt_job') && b:askgpt_job != null
+    if exists('b:askgpt_job') && b:askgpt_job != null_job
       job_stop(b:askgpt_job)
       unlet b:askgpt_job
     endif
@@ -44,7 +44,7 @@ export def Init(query='', range: dict<any> = null_dict)
     append(line('$') - 1, ['__User__', query])
     PushHistory(bufnr(), 'user', query)
 
-    if range != null
+    if range != null_dict
       append(line('$') - 1, '')
       ShareRange(bufnr(), line('$') - 1, range)
       :$-1delete
@@ -120,12 +120,11 @@ def GetHistorySize(): number
 enddef
 
 def ShareRange(buf: number, lnum: number, range: dict<any>)
-  if range == null
+  if range == null_dict
     return
   endif
 
-  const maxquote = range.content->join("\n")->matchlist('```\+')->map((_, x) => strchars(x))->max()
-  const quote = repeat('`', max([3, maxquote + 1]))
+  const content = QuoteCodeBlock(range.ftype, range.content->join("\n"))
 
   PushHistory(buf, 'system', join([
     'Answer question using the following information.',
@@ -134,9 +133,7 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
     'lines: from ' .. range.from .. ' to ' .. range.to .. ' out of ' .. range.total .. 'lines',
     '',
     'content:',
-    quote .. range.ftype,
-  ] + range.content + [
-    quote,
+    content,
   ], "\n"))
 
   append(max([0, lnum]), [
@@ -144,14 +141,23 @@ def ShareRange(buf: number, lnum: number, range: dict<any>)
     'name: ' .. range.fname,
     'line: ' .. range.from .. '-' .. range.to .. '/' .. range.total,
     'content:',
-    quote .. range.ftype,
-  ] + range.content + [
-    quote,
+  ] + content->split("\n") + [
     '',
   ])
 
   exec ':' .. (lnum + 5) .. ',' .. (lnum + 6 + len(range.content)) .. 'fold'
   norm zb
+enddef
+
+def QuoteCodeBlock(filetype: string, code: string): string
+  const maxquote = code
+    ->matchlist('```\+')
+    ->map((_, x) => strchars(x))
+    ->max()
+
+  const quote = repeat('`', max([3, maxquote + 1]))
+
+  return quote .. filetype .. "\n" .. code .. "\n" .. quote
 enddef
 
 def OnInput(text: string)
@@ -183,12 +189,14 @@ def Submit()
   ])
 
   if has('timers') && (!exists('b:askgpt_indicator_count') || b:askgpt_indicator_count == null)
+    b:askgpt_indicator_count = 0
+
     const buf = bufnr()
-    setbufvar(buf, 'askgpt_indicator_count', 0)
-    timer_start(100, (id: number) => UpdateIndicator(buf))
+    const lnum = line('$') - 3
+    timer_start(100, (id: number) => UpdateIndicator(buf, lnum))
   endif
 
-  const cmd = GetCurlCommand() + ['https://api.openai.com/v1/chat/completions', '--silent', '-H', 'Content-Type: application/json', '-H', 'Authorization: Bearer ' .. g:askgpt_api_key, '-d', '@-']
+  const cmd = GetCurlCommand('/v1/chat/completions')
   #const cmd = ['sh', '-c', "sleep 1; echo '" .. '{"choices":[{"message":{"role":"assistant","content":"hello world"}}]}' .. "'"]
   #const cmd = ['sh', '-c', 'sleep 1; cat -; exit 1']
 
@@ -222,15 +230,30 @@ def Submit()
   ch_close_in(channel)
 enddef
 
-def GetCurlCommand(): list<string>
+def GetCurlCommand(endpoint: string): list<string>
+  var curl = ['curl']
   if exists('g:askgpt_curl_command')
-    return g:askgpt_curl_command
+    curl = g:askgpt_curl_command
   endif
-  return ['curl']
+
+  return curl + [
+    'https://api.openai.com' .. endpoint,
+    '--silent',
+    '-H',
+    'Content-Type: application/json',
+    '-H',
+    'Authorization: Bearer ' .. g:askgpt_api_key,
+    '-d',
+    '@-',
+  ]
 enddef
 
 def GetEditingFileTypes(): list<string>
-  return getwininfo()->filter((_, win) => bufname(win.bufnr) !~ '^askgpt://')->map((_, win) => getwinvar(win.winid, '&ft'))->sort()->uniq()
+  return getwininfo()
+    ->filter((_, win) => bufname(win.bufnr) !~ '^askgpt://')
+    ->map((_, win) => getwinvar(win.winid, '&ft'))
+    ->sort()
+    ->uniq()
 enddef
 
 def OnResponse(buf: number, resp: string)
@@ -251,7 +274,7 @@ def OnResponse(buf: number, resp: string)
     catch
       resptype = ''
     endtry
-    content = "Unexpected response:\n```" .. resptype .. "\n" .. resp .. "\n```"
+    content = "Unexpected response:\n" .. QuoteCodeBlock(resptype, resp)
   endtry
 
   deletebufline(buf, lastline - 3)
@@ -277,7 +300,7 @@ def OnExit(buf: number, status: number)
   endif
 enddef
 
-def UpdateIndicator(buf: number)
+def UpdateIndicator(buf: number, lnum: number)
   if getbufvar(buf, 'askgpt_job', null) == null
     setbufvar(buf, 'askgpt_indicator_count', null)
     return
@@ -286,8 +309,7 @@ def UpdateIndicator(buf: number)
   const i = (getbufvar(buf, 'askgpt_indicator_count', 0) + 1) % strchars(indicators)
   setbufvar(buf, 'askgpt_indicator_count', i)
 
-  const lastline = getbufinfo(buf)[0].linecount
-  setbufline(buf, lastline - 3, indicators[i])
+  setbufline(buf, lnum, indicators[i])
 
-  timer_start(100, (id: number) => UpdateIndicator(buf))
+  timer_start(100, (id: number) => UpdateIndicator(buf, lnum))
 enddef
