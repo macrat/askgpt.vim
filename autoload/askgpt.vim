@@ -62,21 +62,26 @@ enddef
 export def Retry()
   Open()
 
-  if b:askgpt_job != null && job_status(b:askgpt_job) == 'run'
-    echoe 'Cannot retry while generating message.'
+  if exists('b:askgpt_job') && b:askgpt_job != null && job_status(b:askgpt_job) == 'run'
+    echoerr 'Cannot retry while generating message.'
     return
   endif
 
-  if len(b:askgpt_history) <= 1
-    echoe 'There is nothing to retry.'
-    return
+  if exists('b:askgpt_history') && len(b:askgpt_history) > 0
+    if b:askgpt_history[-1].role == 'assistant'
+      b:askgpt_history = b:askgpt_history[: -2]
+    endif
+
+    if len(b:askgpt_history) > 0
+      :$-1,$delete
+
+      Submit()
+      append(line('$') - 5, '*retry*')
+      return
+    endif
   endif
 
-  b:askgpt_history = b:askgpt_history[: -1]
-  :$-1,$delete
-
-  Submit()
-  append(line('$') - 5, '*retry*')
+  echoerr 'There is nothing to retry.'
 enddef
 
 def NewRange(from: number, to: number): dict<any>
