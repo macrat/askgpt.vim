@@ -60,6 +60,10 @@ export def Init(query='', range: dict<any> = null_dict)
   prompt_setcallback(bufnr(), OnInput)
 
   norm zb
+
+  if (!exists('b:askgpt_history') || len(b:askgpt_history) == 0) && getline('$') == ''
+    set nomodified
+  endif
 enddef
 
 export def Retry()
