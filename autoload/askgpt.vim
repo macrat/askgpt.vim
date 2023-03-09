@@ -76,10 +76,10 @@ export def Retry()
     endif
 
     if len(b:askgpt_history) > 0
-      :$-1,$delete
+      :$-1delete
 
       Submit()
-      append(line('$') - 5, '*retry*')
+      setline(line('$') - 5, '*retry*')
       return
     endif
   endif
