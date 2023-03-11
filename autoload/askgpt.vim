@@ -34,8 +34,10 @@ export def Init(query='', range: dict<any> = null_dict)
 
   set filetype=markdown buftype=prompt bufhidden=delete
   nnoremap <silent><buffer> dd 0d$
+  nnoremap <silent><buffer> J $
   vnoremap <silent><buffer> d d<Esc>:if getline('$') == '__User__' \| call append('$', '') \| $ \| endif<CR>
   vnoremap <silent><buffer> x x<Esc>:if getline('$') == '__User__' \| call append('$', '') \| $ \| endif<CR>
+  inoremap <silent><buffer> <C-W> <C-o>vb"_x
 
   # delete previous prompt.
   :$-1delete
