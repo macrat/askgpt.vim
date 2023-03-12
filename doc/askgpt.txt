@@ -1,4 +1,4 @@
-*askgpt.txt*	Ask ChatGPT antyhing in you Vim.
+*askgpt.txt*	Ask ChatGPT anything in you Vim.
                                                                   *AskGPT.vim*
 
 ------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ OPTIONS                                                       *askgpt-options*
 	The number includes your messages, AI's messages, and codes that you
 	shared via |:AskGPT| command.
 
-	To make it larger provides more information to AI, but it comsumes a
+	To make it larger provides more information to AI, but it consumes a
 	lot of tokens that you have to pay for them.
 	To make it smaller provides less information, and it costs less.
 
@@ -100,6 +100,34 @@ OPTIONS                                                       *askgpt-options*
 			\ "curl",
 			\ "--proxy", "http://example.com",
 			\ ]
+
+*g:askgpt_use_default_maps*
+	Type: |Boolean|
+	Default: v:true
+
+	Use default key mappings in a chat buffer.
+	Please see also the example in |<Plug>(askgpt-submit)|.
+
+------------------------------------------------------------------------------
+Mappings                                                     *askgpt-mappings*
+
+*<Plug>(askgpt-submit)*
+	Submit a message to the AI and receive a response.
+
+	This shortcut only works when the cursor is on the last __User__ line
+	of an AskGPT.vim buffer or below.
+	Otherwise, this shortcut does nothing.
+
+	It map as |<Return>| in default.
+	Please set |g:askgpt_use_default_maps| if you want to change it.
+
+	For Example, to use <C-J> to submitting message: >
+		let g:askgpt_use_default_maps = v:false
+		augroup askgpt
+		    autocmd BufRead askgpt://
+			    \ imap <buffer> <C-J> <Plug>(askgpt-submit) |
+			    \ nmap <buffer> <C-J> <Plug>(askgpt-submit)
+		augroup END
 
 ------------------------------------------------------------------------------
 vim:tw=78:isk=!-~,^*,^\|,^\":ts=8:noet:ft=help:norl:
