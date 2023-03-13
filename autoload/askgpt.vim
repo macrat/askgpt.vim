@@ -125,12 +125,10 @@ def Submit()
   const prompt = [{
     role: 'system',
     content: join([
-      'You are AskGPT.vim, an AI assistant for conversation.',
-      'Answer very succinctly and clearly, in Markdown.',
-      'Keep answer shorter than 80 characters per line.',
-      '',
-      'File types that user is editing: ' .. GetEditingFileTypes()->join(', '),
-      'Current date: ' .. strftime('%Y-%m-%d %A'),
+      'You are AskGPT.vim, an AI conversation assistant.',
+      'Answer very concise and clear, shorter than 80 chars per line.',
+      'Chat syntax: markdown',
+      'File types user is editing: ' .. GetEditingFileTypes()->join(', '),
     ], "\n"),
   }]
 
