@@ -99,28 +99,28 @@ enddef
 def AppendMessage(type: string, name: string, content: string, buf: number = 0): dict<any>
   ++message_id
 
-  const pos = prop_find({bufnr: buf, type: 'askgpt_user', lnum: line('$')}, 'b')
+  const prompt = GetPrompt(buf)
 
   const contents = (content->trim("\n") .. "\n\n")->split("\n")
 
-  appendbufline(buf ?? bufnr(), pos.lnum - 1, ['__' .. name .. '__'] + contents)
-  prop_add(pos.lnum, 1, {
+  appendbufline(buf ?? bufnr(), prompt.lnum - 1, ['__' .. name .. '__'] + contents)
+  prop_add(prompt.lnum, 1, {
     bufnr: buf,
     id: message_id,
     type: 'askgpt_message',
   })
-  prop_add(pos.lnum, 1, {
+  prop_add(prompt.lnum, 1, {
     bufnr: buf,
     id: message_id,
-    length: len(getline(pos.lnum)),
+    length: len(name) + 4,
     type: 'askgpt_' .. type,
   })
 
-  win_execute(win_findbuf(buf ?? bufnr())[0], ':' .. pos.lnum .. ',' .. (pos.lnum + len(contents)) .. 'fold | :' .. pos.lnum .. 'foldopen')
+  win_execute(win_findbuf(buf ?? bufnr())[0], ':' .. prompt.lnum .. ',' .. (prompt.lnum + len(contents)) .. 'fold | :' .. prompt.lnum .. 'foldopen')
 
   return {
     id: message_id,
-    lnum: pos.lnum,
+    lnum: prompt.lnum,
     type: type,
   }
 enddef
@@ -141,19 +141,24 @@ export def AppendError(content: string, buf: number = 0): dict<any>
   return AppendMessage('error', 'Error', content, buf)
 enddef
 
-export def AppendLoading(): dict<any>
+export def AppendLoading(buf: number = 0): dict<any>
   if !has('timers')
-    return AppendMessage('loading', 'Assistant', 'thinking...')
+    return AppendMessage('loading', 'Assistant', 'thinking...', buf)
   else
-    const msg = AppendMessage('loading', 'Assistant', indicators[0])
-    const bnr = bufnr()
+    const msg = AppendMessage('loading', 'Assistant', indicators[0], buf)
+    const bnr = buf ?? bufnr()
     timer_start(100, (id: number) => UpdateIndicator(bnr, msg.id, 1))
     return msg
   endif
 enddef
 
 export def GetPrompt(buf: number = 0): dict<any>
-  const prop = prop_find({bufnr: buf, type: 'askgpt_user', lnum: line('$')}, 'b')
+  const prop = prop_find({
+    bufnr: buf,
+    type: 'askgpt_user',
+    lnum: GetLineCount(buf),
+  }, 'b')
+
   if len(prop) == 0
     return null_dict
   endif
@@ -163,6 +168,10 @@ export def GetPrompt(buf: number = 0): dict<any>
     lnum: prop.lnum,
     type: 'user',
   }
+enddef
+
+def GetLineCount(buf: number = 0): number
+  return getbufinfo(buf ?? bufnr())->get(0, {})->get('linecount', 0)
 enddef
 
 export def GetLastOfType(type: string, buf: number = 0): dict<any>
@@ -180,7 +189,7 @@ export def GetLastOfType(type: string, buf: number = 0): dict<any>
 enddef
 
 def GetNeighbor(orient: string, id: number, buf: number = 0): dict<any>
-  const base = prop_find({bufnr: buf, id: id, lnum: line('$')}, 'b').lnum
+  const base = prop_find({bufnr: buf, id: id}, 'b').lnum
   const prop = prop_find({bufnr: buf, type: 'askgpt_message', lnum: base, skipstart: true}, orient)
   if len(prop) == 0
     return null_dict
@@ -189,7 +198,7 @@ def GetNeighbor(orient: string, id: number, buf: number = 0): dict<any>
   return {
     id: prop.id,
     lnum: prop.lnum,
-    type: GetType(prop.lnum),
+    type: GetType(prop.lnum, buf),
   }
 enddef
 
@@ -198,7 +207,7 @@ export def GetNearest(buf: number = 0): dict<any>
   return {
     id: prop.id,
     lnum: prop.lnum,
-    type: GetType(prop.lnum),
+    type: GetType(prop.lnum, buf),
   }
 enddef
 
@@ -211,34 +220,20 @@ export def GetNext(id: number, buf: number = 0): dict<any>
 enddef
 
 export def Delete(id: number, buf: number = 0): bool
-  const start = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: line('$')}, 'b')
+  const start = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: 1}, 'f')
   if len(start) == 0
     return false
   endif
 
   final end = prop_find({bufnr: buf, type: 'askgpt_message', lnum: start.lnum, skipstart: true}, 'f')
   if len(end) == 0
-    end['lnum'] = line('$')
+    end['lnum'] = GetLineCount(buf)
     defer AppendPrompt()
   endif
 
   deletebufline(buf ?? bufnr(), start.lnum, end.lnum - 1)
 
   return true
-enddef
-
-export def DeleteLoadings(buf: number = 0): number
-  var count = 0
-  while true
-    const msg = GetLastOfType('loading', buf)
-    if msg == null_dict
-      return count
-    endif
-
-    Delete(msg.id, buf)
-    ++count
-  endwhile
-  return count
 enddef
 
 export def Discard(id: number, buf: number = 0)
@@ -250,7 +245,7 @@ export def Discard(id: number, buf: number = 0)
     all: true,
   })
 
-  const first_line = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: line('$')}, 'b').lnum
+  const first_line = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: GetLineCount(buf)}, 'b').lnum
   const last_line = prop_find({bufnr: buf, type: 'askgpt_message', lnum: first_line, skipstart: true}, 'f').lnum - 1
   prop_add(first_line, 1, {
     bufnr: buf,
@@ -288,8 +283,8 @@ export def GetHistory(max: number): list<dict<string>>
   return msgs
 enddef
 
-def GetType(lnum: number): string
-  const types = prop_list(lnum, {types: ['askgpt_user', 'askgpt_assistant', 'askgpt_system', 'askgpt_loading', 'askgpt_discard', 'askgpt_error']})
+def GetType(lnum: number, buf: number = 0): string
+  const types = prop_list(lnum, {bufnr: buf, types: ['askgpt_user', 'askgpt_assistant', 'askgpt_system', 'askgpt_loading', 'askgpt_discard', 'askgpt_error']})
   if len(types) == 0
     return ''
   endif
@@ -306,7 +301,7 @@ def FoldText(): string
 enddef
 
 def UpdateIndicator(buf: number, id: number, offset: number)
-  const prop = prop_find({bufnr: buf, id: id, type: 'askgpt_loading', both: true, lnum: 1})
+  const prop = prop_find({bufnr: buf, id: id, type: 'askgpt_loading', both: true, lnum: 1}, 'f')
   if !prop || len(prop) == 0
     return
   endif
