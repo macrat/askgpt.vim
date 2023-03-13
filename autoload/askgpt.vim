@@ -218,7 +218,6 @@ def OnResponse(buf: number, indicator: number, resp: string)
 enddef
 
 def OnExit(buf: number, indicator: number, status: number)
-  echo 'dead ' .. status
   const job = getbufvar(buf, 'askgpt_job', null_job)
 
   if status >= 0
