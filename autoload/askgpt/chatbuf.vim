@@ -5,16 +5,26 @@ const indicators = '▖▌▘▀▝▐▗▄'
 var message_id = 0
 
 export def Init(OnSubmit: func())
-  setl buftype=nofile filetype=markdown foldlevel=1 foldtext=FoldText()
+  setl buftype=nofile bufhidden=hide filetype=markdown foldlevel=1 foldtext=FoldText()
 
   b:askgpt_on_submit = OnSubmit
 
-  nmap <silent><buffer> <Plug>(askgpt-submit) :<C-U>call askgpt#chatbuf#Submit()<CR>
-  imap <silent><buffer> <Plug>(askgpt-submit) <C-O>:<C-U>call askgpt#chatbuf#Submit()<CR>
+  nnoremap <silent><buffer> <Plug>(askgpt-submit) :call askgpt#chatbuf#Submit()<CR>
+  inoremap <silent><buffer> <Plug>(askgpt-submit) <C-G>u<C-O>:call askgpt#chatbuf#Submit()<CR>
+
+  nnoremap <silent><buffer> <Plug>(askgpt-go-next-message) m':<C-R>=get(askgpt#chatbuf#GetNext(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
+  vnoremap <silent><buffer> <Plug>(askgpt-go-next-message) <Esc>m':exe "normal! gv"<Bar>:<C-R>=get(askgpt#chatbuf#GetNext(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
+  nnoremap <silent><buffer> <Plug>(askgpt-go-prev-message) m':<C-R>=get(askgpt#chatbuf#GetPrev(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
+  vnoremap <silent><buffer> <Plug>(askgpt-go-prev-message) <Esc>m':exe "normal! gv"<Bar>:<C-R>=get(askgpt#chatbuf#GetPrev(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
 
   if !exists('g:askgpt_use_default_maps') || g:askgpt_use_default_maps
     imap <buffer> <Return> <Plug>(askgpt-submit)
     nmap <buffer> <Return> <Plug>(askgpt-submit)
+
+    nmap <buffer> ]] <Plug>(askgpt-go-next-message)
+    vmap <buffer> ]] <Plug>(askgpt-go-next-message)
+    nmap <buffer> [[ <Plug>(askgpt-go-prev-message)
+    vmap <buffer> [[ <Plug>(askgpt-go-prev-message)
   endif
 
   prop_type_add('askgpt_message', {bufnr: bufnr()})
