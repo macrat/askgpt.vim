@@ -115,10 +115,7 @@ OPTIONS                                                       *askgpt-options*
 
 	Command to execute curl.
 
-	For example, if you are using Windows, you may want to use curl.exe: >
-		let g:askgpt_curl_command = ["curl.exe"]
-<
-	Or if you need to use proxy, you can use --proxy option of curl: >
+	For example, you can give extra options to the curl such as --proxy: >
 		let g:askgpt_curl_command = [
 			\ "curl",
 			\ "--proxy", "http://example.com",
