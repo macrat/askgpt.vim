@@ -31,11 +31,12 @@ export def Init(OnSubmit: func())
   prop_type_add('askgpt_user', {bufnr: bufnr(), highlight: 'DiffAdd'})
   prop_type_add('askgpt_assistant', {bufnr: bufnr(), highlight: 'DiffChange'})
   prop_type_add('askgpt_system', {bufnr: bufnr(), highlight: 'DiffText'})
+  prop_type_add('askgpt_prompt', {bufnr: bufnr(), highlight: 'DiffText'})
   prop_type_add('askgpt_loading', {bufnr: bufnr(), highlight: 'DiffChange'})
   prop_type_add('askgpt_discard', {bufnr: bufnr(), priority: 1, highlight: 'Comment'})
   prop_type_add('askgpt_error', {bufnr: bufnr(), highlight: 'DiffDelete'})
 
-  AppendPrompt()
+  AppendUserPrompt()
   :1delete
   :$
 
@@ -48,7 +49,7 @@ enddef
 
 export def RemoveAll()
   :%delete
-  AppendPrompt()
+  AppendUserPrompt()
   :1delete
   :$
 enddef
@@ -70,11 +71,11 @@ export def Submit()
   exec ':' .. prompt.lnum .. ',$fold'
   exec ':' .. prompt.lnum .. 'foldopen'
 
-  AppendPrompt()
+  AppendUserPrompt()
   b:askgpt_on_submit()
 enddef
 
-def AppendPrompt(): dict<any>
+def AppendUserPrompt(): dict<any>
   ++message_id
 
   append('$', ['__User__', ''])
@@ -135,6 +136,10 @@ enddef
 
 export def AppendSystem(name: string, content: string, buf: number = 0): dict<any>
   return AppendMessage('system', name, content, buf)
+enddef
+
+export def AppendSystemPrompt(content: string, buf: number = 0): dict<any>
+  return AppendMessage('prompt', 'Prompt', content, buf)
 enddef
 
 export def AppendError(content: string, buf: number = 0): dict<any>
@@ -244,7 +249,7 @@ export def Delete(id: number, buf: number = 0): bool
   final end = prop_find({bufnr: buf, type: 'askgpt_message', lnum: start.lnum, skipstart: true}, 'f')
   if len(end) == 0
     end['lnum'] = GetLineCount(buf)
-    defer AppendPrompt()
+    defer AppendUserPrompt()
   endif
 
   deletebufline(buf ?? bufnr(), start.lnum, end.lnum - 1)
@@ -269,6 +274,17 @@ export def Discard(id: number, buf: number = 0)
     end_lnum: last_line,
     type: 'askgpt_discard',
   })
+enddef
+
+export def GetSystemPrompt(buf: number = 0): string
+  const prop = prop_find({bufnr: buf, type: 'askgpt_prompt', lnum: 1}, 'f')
+  if len(prop) == 0
+    return ''
+  endif
+
+  const next = prop_find({bufnr: buf, type: 'askgpt_message', lnum: 2}, 'f')
+
+  return getbufline(buf ?? bufnr(), prop.lnum + 1, (get(next, 'lnum', 1) - 1) ?? '$')->join("\n")->trim("\n")
 enddef
 
 export def GetHistory(max: number): list<dict<string>>
@@ -300,7 +316,7 @@ export def GetHistory(max: number): list<dict<string>>
 enddef
 
 def GetType(lnum: number, buf: number = 0): string
-  const types = prop_list(lnum, {bufnr: buf, types: ['askgpt_user', 'askgpt_assistant', 'askgpt_system', 'askgpt_loading', 'askgpt_discard', 'askgpt_error']})
+  const types = prop_list(lnum, {bufnr: buf, types: ['askgpt_user', 'askgpt_assistant', 'askgpt_system', 'askgpt_prompt', 'askgpt_loading', 'askgpt_discard', 'askgpt_error']})
   if len(types) == 0
     return ''
   endif

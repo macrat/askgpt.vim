@@ -46,6 +46,12 @@ export def Init()
   endif
 
   askgpt#chatbuf#Init(Submit)
+
+  const default_prompt = "You are AskGPT.vim, an AI conversation assistant.\n"
+                      .. "Answer very concise and clear, shorter than 80 chars per line.\n"
+                      .. "Chat syntax: markdown\n"
+                      .. "File types user is editing: {filetypes}"
+  askgpt#chatbuf#AppendSystemPrompt(get(g:, 'askgpt_prompt', default_prompt))
 enddef
 
 export def Retry()
@@ -56,7 +62,7 @@ export def Retry()
     return
   endif
 
-  const prompt = askgpt#chatbuf#GetPrompt()
+  const prompt = askgpt#chatbuf#GetUserPrompt()
 
   var msg = askgpt#chatbuf#GetLastOfTypes(['assistant', 'error'])
   if msg != null_dict
@@ -134,11 +140,7 @@ def Submit()
 enddef
 
 def GeneratePrompt(): string
-  const default_prompt = "You are AskGPT.vim, an AI conversation assistant.\n"
-    .. "Answer very concise and clear, shorter than 80 chars per line.\n"
-    .. "Chat syntax: markdown\n"
-    .. "File types user is editing: {filetypes}"
-  var prompt = get(g:, 'askgpt_prompt', default_prompt)
+  var prompt = askgpt#chatbuf#GetSystemPrompt()
 
   if prompt =~ '{filetypes}'
     prompt = substitute(prompt, '{filetypes}', GetEditingFileTypes()->join(', '), 'g')
