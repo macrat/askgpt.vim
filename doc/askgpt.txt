@@ -86,6 +86,29 @@ OPTIONS                                                       *askgpt-options*
 	lot of tokens that you have to pay for them.
 	To make it smaller provides less information, and it costs less.
 
+*g:askgpt_prompt*
+	Type: |String|
+	Default:
+	    You are AskGPT.vim, an AI conversation assistant.
+	    Answer very concise and clear, shorter than 80 chars per line.
+	    Chat syntax: markdown
+	    File types user is editing: {filetypes}
+
+	The prompt that is always provided to the AI, to let AI know who it is
+	and how it should response.
+
+	Some markers are replaced with context-specific values before provide
+	to the AI.
+
+	{filetypes} is replaced by file types that user is currently editing.
+
+	{date} is replaced by the current date in YYYY-mm-dd format
+
+	{weekday} is replaced by the day of week in local language.
+	You can check this value by `:echo strftime('%A')`.
+
+	{time} is replaced by the current time in HH:MM format.
+
 *g:askgpt_curl_command*
 	Type: |List| of |String|s
 	Default: ["curl"]

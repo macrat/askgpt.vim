@@ -124,18 +124,37 @@ def Submit()
 
   const prompt = [{
     role: 'system',
-    content: join([
-      'You are AskGPT.vim, an AI conversation assistant.',
-      'Answer very concise and clear, shorter than 80 chars per line.',
-      'Chat syntax: markdown',
-      'File types user is editing: ' .. GetEditingFileTypes()->join(', '),
-    ], "\n"),
+    content: GeneratePrompt(),
   }]
 
   askgpt#api#Request(indicator.id, '/v1/chat/completions', {
     model: 'gpt-3.5-turbo',
     messages: prompt + askgpt#chatbuf#GetHistory(GetHistorySize()),
   }, OnResponse)
+enddef
+
+def GeneratePrompt(): string
+  const default_prompt = "You are AskGPT.vim, an AI conversation assistant.\n"
+    .. "Answer very concise and clear, shorter than 80 chars per line.\n"
+    .. "Chat syntax: markdown\n"
+    .. "File types user is editing: {filetypes}"
+  var prompt = get(g:, 'askgpt_prompt', default_prompt)
+
+  if prompt =~ '{filetypes}'
+    prompt = substitute(prompt, '{filetypes}', GetEditingFileTypes()->join(', '), 'g')
+  endif
+
+  if prompt =~ '{date}'
+    prompt = substitute(prompt, '{date}', strftime('%Y-%m-%d'), 'g')
+  endif
+  if prompt =~ '{weekday}'
+    prompt = substitute(prompt, '{weekday}', strftime('%A'), 'g')
+  endif
+  if prompt =~ '{time}'
+    prompt = substitute(prompt, '{time}', strftime('%H:%M'), 'g')
+  endif
+
+  return prompt
 enddef
 
 def GetEditingFileTypes(): list<string>
