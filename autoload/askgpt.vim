@@ -129,7 +129,7 @@ def Submit()
 
   askgpt#api#Request(indicator.id, '/v1/chat/completions', {
     model: 'gpt-3.5-turbo',
-    messages: prompt + askgpt#chatbuf#GetHistory(GetHistorySize()),
+    messages: prompt + askgpt#chatbuf#GetHistory(get(g:, 'askgpt_history_size', 10)),
   }, OnResponse)
 enddef
 
@@ -163,13 +163,6 @@ def GetEditingFileTypes(): list<string>
     ->map((_, win) => getwinvar(win.winid, '&ft'))
     ->sort()
     ->uniq()
-enddef
-
-def GetHistorySize(): number
-  if exists('g:askgpt_history_size')
-    return g:askgpt_history_size
-  endif
-  return 10
 enddef
 
 def OnResponse(buf: number, indicator: number, resp: string, status: number)
