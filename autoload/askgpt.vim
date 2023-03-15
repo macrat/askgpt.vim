@@ -52,6 +52,8 @@ export def Init()
                       .. "Chat syntax: markdown\n"
                       .. "File types user is editing: {filetypes}"
   askgpt#chatbuf#AppendSystemPrompt(get(g:, 'askgpt_prompt', default_prompt))
+
+  :1foldclose
 enddef
 
 export def Retry()
