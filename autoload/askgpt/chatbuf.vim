@@ -32,7 +32,7 @@ export def Init(OnSubmit: func())
   prop_type_add('askgpt_assistant', {bufnr: bufnr(), highlight: 'DiffChange'})
   prop_type_add('askgpt_system', {bufnr: bufnr(), highlight: 'DiffText'})
   prop_type_add('askgpt_loading', {bufnr: bufnr(), highlight: 'DiffChange'})
-  prop_type_add('askgpt_discard', {bufnr: bufnr(), highlight: 'Comment'})
+  prop_type_add('askgpt_discard', {bufnr: bufnr(), priority: 1, highlight: 'Comment'})
   prop_type_add('askgpt_error', {bufnr: bufnr(), highlight: 'DiffDelete'})
 
   AppendPrompt()
@@ -188,8 +188,24 @@ export def GetLastOfType(type: string, buf: number = 0): dict<any>
   }
 enddef
 
+export def GetLastOfTypes(types: list<string>, buf: number = 0): dict<any>
+  var prop = null_dict
+  for type in types
+    const p = GetLastOfType(type, buf)
+    if prop == null_dict
+      prop = p
+      continue
+    endif
+
+    if p != null_dict && p.lnum > prop.lnum
+      prop = p
+    endif
+  endfor
+  return prop
+enddef
+
 def GetNeighbor(orient: string, id: number, buf: number = 0): dict<any>
-  const base = prop_find({bufnr: buf, id: id}, 'b').lnum
+  const base = prop_find({bufnr: buf, id: id, lnum: 1}, 'f').lnum
   const prop = prop_find({bufnr: buf, type: 'askgpt_message', lnum: base, skipstart: true}, orient)
   if len(prop) == 0
     return null_dict

@@ -58,10 +58,10 @@ export def Retry()
 
   const prompt = askgpt#chatbuf#GetPrompt()
 
-  var msg = askgpt#chatbuf#GetLastOfType('assistant')
+  var msg = askgpt#chatbuf#GetLastOfTypes(['assistant', 'error'])
   if msg != null_dict
     while msg != null_dict && msg.id != prompt.id
-      if msg.type != 'error' && msg.type != 'discard'
+      if msg.type != 'discard'
         askgpt#chatbuf#Discard(msg.id)
       endif
       msg = askgpt#chatbuf#GetNext(msg.id)
