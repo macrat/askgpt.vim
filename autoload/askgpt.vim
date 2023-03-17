@@ -136,8 +136,8 @@ def Submit()
   }]
 
   askgpt#api#Request(indicator.id, '/v1/chat/completions', {
-    model: get(g:, 'askgpt_model', 'gpt-3.5-turbo'),
-    messages: prompt + askgpt#chatbuf#GetHistory(get(g:, 'askgpt_history_size', 10)),
+    model: g:askgpt_model,
+    messages: prompt + askgpt#chatbuf#GetHistory(g:askgpt_history_size),
   }, OnResponse)
 enddef
 

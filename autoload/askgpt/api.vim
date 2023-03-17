@@ -38,12 +38,7 @@ export def IsRunning(): bool
 enddef
 
 def GetCurlCommand(endpoint: string): list<string>
-  var curl = has('win32') ? ['curl.exe'] : ['curl']
-  if exists('g:askgpt_curl_command')
-    curl = g:askgpt_curl_command
-  endif
-
-  return curl + [
+  return g:askgpt_curl_command + [
     'https://api.openai.com' .. endpoint,
     '--silent',
     '-H',
