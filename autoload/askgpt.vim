@@ -29,6 +29,8 @@ export def Open(prompt='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
   if wipe
     askgpt#api#Cancel()
     askgpt#chatbuf#RemoveAll()
+
+    SetSystemPrompt()
   endif
 
   if prompt != ''
@@ -47,6 +49,10 @@ export def Init()
 
   askgpt#chatbuf#Init(Submit)
 
+  SetSystemPrompt()
+enddef
+
+def SetSystemPrompt()
   const default_prompt = "You are AskGPT.vim, an AI conversation assistant.\n"
                       .. "Answer very concise and clear, shorter than 80 chars per line.\n"
                       .. "Chat syntax: markdown\n"
