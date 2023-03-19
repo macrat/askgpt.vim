@@ -141,10 +141,14 @@ def Submit()
     content: GeneratePrompt(),
   }]
 
-  askgpt#api#Request(indicator.id, '/v1/chat/completions', {
-    model: g:askgpt_model,
-    messages: prompt + askgpt#chatbuf#GetHistory(g:askgpt_history_size),
-  }, OnResponse)
+  askgpt#api#RequestChat(
+    indicator.id,
+    g:askgpt_model,
+    prompt + askgpt#chatbuf#GetHistory(g:askgpt_history_size),
+    OnUpdate,
+    OnFinish,
+    OnError,
+  )
 enddef
 
 def GeneratePrompt(): string
@@ -175,7 +179,18 @@ def GetEditingFileTypes(): list<string>
     ->uniq()
 enddef
 
-def OnResponse(buf: number, indicator: number, resp: string, status: number)
+def OnUpdate(buf: number, indicator: number, message: string)
+  askgpt#chatbuf#UpdateLoading(indicator, message, buf)
+enddef
+
+def OnFinish(buf: number, indicator: number, message: string)
+  const deleted = askgpt#chatbuf#Delete(indicator, buf)
+  if deleted
+    askgpt#chatbuf#AppendAssistant(message, buf)
+  endif
+enddef
+
+def OnError(buf: number, indicator: number, resp: string, status: number)
   const deleted = askgpt#chatbuf#Delete(indicator, buf)
 
   if !deleted || status < 0
@@ -183,15 +198,8 @@ def OnResponse(buf: number, indicator: number, resp: string, status: number)
   endif
 
   try
-    const body: dict<any> = json_decode(resp)
-    if has_key(body, 'error')
-      askgpt#chatbuf#AppendError('**' .. body.error.type .. '**: ' .. body.error.message, buf)
-      return
-    endif
-
-    const msg: dict<string> = body.choices[0].message
-
-    askgpt#chatbuf#AppendAssistant(msg.content, buf)
+    const error: dict<string> = json_decode(resp).error
+    askgpt#chatbuf#AppendError('**' .. error.type .. '**: ' .. error.message, buf)
   catch
     var resptype = 'json'
     try

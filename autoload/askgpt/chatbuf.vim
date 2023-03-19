@@ -97,14 +97,14 @@ def AppendUserPrompt(): dict<any>
   }
 enddef
 
-def AppendMessage(type: string, name: string, content: string, buf: number = 0): dict<any>
+def AppendMessage(type: string, name: string, content: string, buf: number = 0, marker: string = ''): dict<any>
   ++message_id
 
   const prompt = GetPrompt(buf)
 
   const contents = (content->trim("\n") .. "\n\n")->split("\n")
 
-  appendbufline(buf ?? bufnr(), prompt.lnum - 1, ['__' .. name .. '__'] + contents)
+  appendbufline(buf ?? bufnr(), prompt.lnum - 1, ['__' .. name .. '__' .. marker] + contents)
   prop_add(prompt.lnum, 1, {
     bufnr: buf,
     id: message_id,
@@ -147,14 +147,14 @@ export def AppendError(content: string, buf: number = 0): dict<any>
 enddef
 
 export def AppendLoading(buf: number = 0): dict<any>
-  if !has('timers')
-    return AppendMessage('loading', 'Assistant', 'thinking...', buf)
-  else
-    const msg = AppendMessage('loading', 'Assistant', indicators[0], buf)
-    const bnr = buf ?? bufnr()
-    timer_start(100, (id: number) => UpdateIndicator(bnr, msg.id, 1))
-    return msg
-  endif
+  return AppendMessage('loading', 'Assistant', 'loading...', buf)
+enddef
+
+export def UpdateLoading(id: number, content: string, buf: number = 0)
+  const prop = prop_find({bufnr: buf, id: id, type: 'askgpt_loading', both: true, lnum: 1}, 'f')
+  const bnr = buf ?? bufnr()
+  deletebufline(bnr, prop.lnum + 1, GetNext(id, buf).lnum - 2)
+  appendbufline(bnr, prop.lnum, content->trim()->split("\n"))
 enddef
 
 export def GetPrompt(buf: number = 0): dict<any>
@@ -330,15 +330,4 @@ def FoldText(): string
     return substitute(line, '__', '', 'g') .. ' '
   endif
   return '+' .. v:folddashes .. '  ' .. (v:foldend - v:foldstart + 1) .. ' lines: ' .. line
-enddef
-
-def UpdateIndicator(buf: number, id: number, offset: number)
-  const prop = prop_find({bufnr: buf, id: id, type: 'askgpt_loading', both: true, lnum: 1}, 'f')
-  if !prop || len(prop) == 0
-    return
-  endif
-
-  setbufline(buf, prop.lnum + 1, indicators[offset])
-
-  timer_start(100, (_: number) => UpdateIndicator(buf, id, (offset + 1) % strchars(indicators)))
 enddef
