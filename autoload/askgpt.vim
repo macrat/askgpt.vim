@@ -183,7 +183,13 @@ def OnResponse(buf: number, indicator: number, resp: string, status: number)
   endif
 
   try
-    const msg: dict<string> = json_decode(resp).choices[0].message
+    const body: dict<any> = json_decode(resp)
+    if has_key(body, 'error')
+      askgpt#chatbuf#AppendError('**' .. body.error.type .. '**: ' .. body.error.message, buf)
+      return
+    endif
+
+    const msg: dict<string> = body.choices[0].message
 
     askgpt#chatbuf#AppendAssistant(msg.content, buf)
   catch
