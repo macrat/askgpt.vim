@@ -1,6 +1,7 @@
 vim9script
 
 const indicators = '▖▌▘▀▝▐▗▄'
+var indicator_phase = 0
 
 var message_id = 0
 
@@ -147,14 +148,19 @@ export def AppendError(content: string, buf: number = 0): dict<any>
 enddef
 
 export def AppendLoading(buf: number = 0): dict<any>
-  return AppendMessage('loading', 'Assistant', 'loading...', buf)
+  const prop = AppendMessage('loading', 'Assistant', indicators[indicator_phase], buf)
+
+  const bnr = buf ?? bufnr()
+  timer_start(100, (timer) => UpdateTimer(bnr, prop.id))
+
+  return prop
 enddef
 
 export def UpdateLoading(id: number, content: string, buf: number = 0)
   const prop = prop_find({bufnr: buf, id: id, type: 'askgpt_loading', both: true, lnum: 1}, 'f')
   const bnr = buf ?? bufnr()
-  deletebufline(bnr, prop.lnum + 1, GetNext(id, buf).lnum - 2)
-  appendbufline(bnr, prop.lnum, content->trim()->split("\n"))
+  deletebufline(bnr, prop.lnum + 1, GetNext(id, bnr).lnum - 2)
+  appendbufline(bnr, prop.lnum, (content->trim() .. indicators[indicator_phase])->split("\n"))
 enddef
 
 export def GetPrompt(buf: number = 0): dict<any>
@@ -210,8 +216,12 @@ export def GetLastOfTypes(types: list<string>, buf: number = 0): dict<any>
 enddef
 
 def GetNeighbor(orient: string, id: number, buf: number = 0): dict<any>
-  const base = prop_find({bufnr: buf, id: id, lnum: 1}, 'f').lnum
-  const prop = prop_find({bufnr: buf, type: 'askgpt_message', lnum: base, skipstart: true}, orient)
+  const base = prop_find({bufnr: buf, id: id, lnum: 1}, 'f')
+  if len(base) == 0
+    return null_dict
+  endif
+
+  const prop = prop_find({bufnr: buf, type: 'askgpt_message', lnum: base.lnum, skipstart: true}, orient)
   if len(prop) == 0
     return null_dict
   endif
@@ -330,4 +340,18 @@ def FoldText(): string
     return substitute(line, '__', '', 'g') .. ' '
   endif
   return '+' .. v:folddashes .. '  ' .. (v:foldend - v:foldstart + 1) .. ' lines: ' .. line
+enddef
+
+def UpdateTimer(buf: number, id: number)
+  indicator_phase = (indicator_phase + 1) % strchars(indicators)
+
+  const prop = GetNext(id, buf)
+  if prop == null_dict
+    return
+  endif
+  getbufoneline(buf, prop.lnum - 2)
+    ->substitute('[' .. indicators .. ']$', indicators[indicator_phase], '')
+    ->setbufline(buf, prop.lnum - 2)
+
+  timer_start(100, (timer) => UpdateTimer(buf, id))
 enddef
