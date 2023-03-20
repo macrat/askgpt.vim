@@ -56,7 +56,7 @@ export def RemoveAll()
 enddef
 
 export def Submit()
-  const prompt = GetPrompt()
+  const prompt = GetUserPrompt()
   if prompt.lnum > line('.')
     return
   endif
@@ -99,7 +99,7 @@ def AppendUserPrompt(): dict<any>
 enddef
 
 def AppendMessage(type: string, name: string, content: string, buf: number = 0): dict<any>
-  const prompt = GetPrompt(buf)
+  const prompt = GetUserPrompt(buf)
 
   return WriteMessage(prompt.lnum, type, name, content, buf)
 enddef
@@ -167,7 +167,7 @@ export def UpdateLoading(id: number, content: string, buf: number = 0)
   appendbufline(bnr, prop.lnum, (content->trim() .. indicators[indicator_phase])->split("\n"))
 enddef
 
-export def GetPrompt(buf: number = 0): dict<any>
+export def GetUserPrompt(buf: number = 0): dict<any>
   const prop = prop_find({
     bufnr: buf,
     type: 'askgpt_message',
@@ -190,7 +190,7 @@ def GetLineCount(buf: number = 0): number
 enddef
 
 export def GetLastOfType(type: string, buf: number = 0): dict<any>
-  const prompt_lnum = GetPrompt(buf).lnum
+  const prompt_lnum = GetUserPrompt(buf).lnum
   const prop = prop_find({bufnr: buf, type: 'askgpt_' .. type, lnum: prompt_lnum, skipstart: true}, 'b')
   if len(prop) == 0
     return null_dict
@@ -302,7 +302,7 @@ export def GetSystemPrompt(buf: number = 0): string
 enddef
 
 export def GetHistory(max: number): list<dict<string>>
-  var lnum = GetPrompt().lnum
+  var lnum = GetUserPrompt().lnum
 
   final msgs: list<dict<string>> = []
 

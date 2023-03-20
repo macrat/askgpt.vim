@@ -59,7 +59,7 @@ export def ScanAndFix()
   endif
 
   # make sure that user prompt exists.
-  askgpt#chatbuf#GetPrompt()
+  askgpt#chatbuf#GetUserPrompt()
 enddef
 
 def SetSystemPrompt()
