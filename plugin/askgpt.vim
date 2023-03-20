@@ -4,7 +4,8 @@ command -nargs=? -range -bang AskGPT askgpt#Open(<q-args>, "<bang>" != "", <rang
 command AskGPTRetry askgpt#Retry()
 
 augroup askgpt-internal
-  au BufReadCmd askgpt:// askgpt#Init()
+  au BufReadCmd  askgpt:// askgpt#Init()
+  au TextChanged askgpt:// askgpt#ScanAndFix()
 augroup END
 
 g:askgpt_model        = get(g:, 'askgpt_model', 'gpt-3.5-turbo')

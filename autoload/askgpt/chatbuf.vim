@@ -98,31 +98,35 @@ def AppendUserPrompt(): dict<any>
   }
 enddef
 
-def AppendMessage(type: string, name: string, content: string, buf: number = 0, marker: string = ''): dict<any>
-  ++message_id
-
+def AppendMessage(type: string, name: string, content: string, buf: number = 0): dict<any>
   const prompt = GetPrompt(buf)
 
+  return WriteMessage(prompt.lnum, type, name, content, buf)
+enddef
+
+def WriteMessage(lnum: number, type: string, name: string, content: string, buf: number = 0): dict<any>
   const contents = (content->trim("\n") .. "\n\n")->split("\n")
 
-  appendbufline(buf ?? bufnr(), prompt.lnum - 1, ['__' .. name .. '__' .. marker] + contents)
-  prop_add(prompt.lnum, 1, {
+  appendbufline(buf ?? bufnr(), lnum - 1, ['__' .. name .. '__'] + contents)
+
+  ++message_id
+  prop_add(lnum, 1, {
     bufnr: buf,
     id: message_id,
     type: 'askgpt_message',
   })
-  prop_add(prompt.lnum, 1, {
+  prop_add(lnum, 1, {
     bufnr: buf,
     id: message_id,
     length: len(name) + 4,
     type: 'askgpt_' .. type,
   })
 
-  win_execute(win_findbuf(buf ?? bufnr())[0], ':' .. prompt.lnum .. ',' .. (prompt.lnum + len(contents)) .. 'fold | :' .. prompt.lnum .. 'foldopen')
+  win_execute(win_findbuf(buf ?? bufnr())[0], ':' .. lnum .. ',' .. (lnum + len(contents)) .. 'fold | :' .. lnum .. 'foldopen')
 
   return {
     id: message_id,
-    lnum: prompt.lnum,
+    lnum: lnum,
     type: type,
   }
 enddef
@@ -140,7 +144,7 @@ export def AppendSystem(name: string, content: string, buf: number = 0): dict<an
 enddef
 
 export def AppendSystemPrompt(content: string, buf: number = 0): dict<any>
-  return AppendMessage('prompt', 'Prompt', content, buf)
+  return WriteMessage(1, 'prompt', 'Prompt', content, buf)
 enddef
 
 export def AppendError(content: string, buf: number = 0): dict<any>
@@ -166,12 +170,12 @@ enddef
 export def GetPrompt(buf: number = 0): dict<any>
   const prop = prop_find({
     bufnr: buf,
-    type: 'askgpt_user',
+    type: 'askgpt_message',
     lnum: GetLineCount(buf),
   }, 'b')
 
-  if len(prop) == 0
-    return null_dict
+  if len(prop) == 0 || GetType(prop.lnum, buf) != 'user'
+    return AppendUserPrompt()
   endif
 
   return {

@@ -52,6 +52,16 @@ export def Init()
   SetSystemPrompt()
 enddef
 
+export def ScanAndFix()
+  # make sure that system prompt exists.
+  if askgpt#chatbuf#GetLastOfType('prompt') == null_dict
+    SetSystemPrompt()
+  endif
+
+  # make sure that user prompt exists.
+  askgpt#chatbuf#GetPrompt()
+enddef
+
 def SetSystemPrompt()
   const default_prompt = "You are AskGPT.vim, an AI conversation assistant.\n"
                       .. "Answer very concise and clear, shorter than 80 chars per line.\n"
