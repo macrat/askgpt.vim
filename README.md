@@ -1,90 +1,68 @@
 AskGPT.vim
 ==========
 
-VimにChatGPTを組み込んで、あなたのコードについて質問できるようにするプラグイン。
+A Vim plugin that provides a ChatGPT interface.
 
-__注意__: 実験的なプラグインです。あまりテストされていませんので、十分注意して使用してください。
-
-English version of readme (that was translated via this plugin!), follows Japanese version.
-
-![Screenshot of this plugin. There are two windows, left is Japanese version of this readme, and right is a chat window that AskGPT is translating it to English.](./screenshot.jpg)
-
-
-## 必要なもの
-
-- `+job`と`+channel`が有効になっているVim。
-- `curl`コマンド。
-- OpenAIのAPIキー。
-
-
-## 使い方
-
-1. vimrcでAPIキーを設定する。
-
-```vim
-let g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
-```
-
-2. Vimを起動して、`:AskGPT`でチャットウィンドウを開く。
-
-3. 聞きたいことを入力してエンターを押す。
-
-
-## ヒントと注意事項
-
-- `:[range]AskGPT`として範囲付きでコマンドを実行すると、その範囲をChatGPTにシェアすることができます。
-
-  * コードについて質問したいときは、ビジュアルモードで選択してから`:'<,'>AskGPT`のように起動すると便利です。
-
-  * `:%AskGPT`のようにすれば、コード全体について質問できます。
-
-- `:AskGPT [聞きたいこと]`のように実行すると、コマンドから直接質問を入力できます。
-
-- デフォルトでは過去10件のメッセージと共有したコードがChatGPT APIに送信されます。文字数等での上限は設けていませんので、APIの使用状況に注意しながら利用してください。
-
-  * APIに送信するメッセージの件数は`g:askgpt_history_size`で変更できます。
-
-  * メッセージ履歴は`:AskGPT!`で削除できます。
-
----
-
-A plugin that integrates ChatGPT into Vim to let you ask questions about your code.
-
-__Note__: This is an experimental plugin and has not been thoroughly tested, so please use it with caution.
+![Animation: Ask AskGPT.vim to describe source code](./screenshot.gif)
 
 
 ## Requirements
 
-- Vim with `+job` and `+channel` enabled.
+- Latest Vim with `+job` and `+channel` feature.
 - `curl` command.
 - OpenAI API key.
 
 
 ## How to use
 
-1. Set your OpenAI API key in your vimrc.
+1. Install askgpt.vim plugin using your favorite plugin manager.
 
-```vim
-let g:askgpt_api_key = 'xxxxxxxxxxxxxxxxxxxx'
-```
+2. Set OpenAI API key in your vimrc.
 
-2. Open Vim and use the `:AskGPT` command to open the chat window.
+   ``` vim
+   " OpenAI API key.
+   let g:askgpt_api_key = 'xxxxxxxxxxxxxxxx'
+   ```
 
-3. Enter your question and press Enter.
+3. Open Vim and execute `:AskGPT` command to open the chat window.
+
+4. Ask your AI assistant anything and press Enter.
+
+Detailed documentation is in [:help askgpt.txt](./doc/askgpt.txt).
 
 
-## Hints and Cautions
+## Useful ideas
 
-- You can share a range with ChatGPT by executing the `:[range]AskGPT` command.
+### Describe source code
+1. Select a part of source code in Visual mode.
+2. Run `:'<,'>AskGPT What does this function do?`
+3. AI will provide a brief description.
+4. Ask any question about the code, for example, `How to use it?`
 
-  * When you want to ask about a piece of code, it's convenient to select it in Visual mode and execute the `:'<,'>AskGPT` command.
+### Summarize document
+1. Run `:%AskGPT Summarize it`.
+2. AI will provide a summary version of the whole document.
 
-  * You can ask a question about the whole file by executing the `:%AskGPT` command.
+### Proofread and Enhance text
+1. Select a sentence in Visual mode.
+2. Run `:'<,'>AskGPT Proofread and enhance it`
+3. AI will proofread and suggest improvements.
+4. Ask for specific suggestions, for example, `Make it more polite`.
 
-- You can enter your question directly from the command line by executing the `:AskGPT [your question]` command.
+### Translate foreign language
+1. Select a text in Visual mode.
+2. Run `:'<,'>AskGPT Translate it`
+3. AI will translate the text you selected.
 
-- By default, the last 10 messages and shared code will be sent to the ChatGPT API. There is no limit on the number of characters, so use it carefully.
+### Convert source code
+1. Run `:%AskGPT Translate it to Python`
+2. AI will provide a Python version of the source code.
 
-  * You can change the number of messages to send through `g:askgpt_history_size`.
-
-  * The message history can be deleted with `:AskGPT!`.
+### Ask to pretend a role or character
+1. Run `:AskGPT` to open a chat window.
+2. Type `ggzo` to open the system prompt message.
+3. Edit the prompt to specify a role or character.
+   For example:
+   - `You are a wise mentor. Help the user with useful questions.`
+   - `You are a bigoted philosopher. Discuss complex ideas.`
+4. Enjoy chatting with your chosen persona.
