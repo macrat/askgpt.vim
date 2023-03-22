@@ -1,62 +1,21 @@
 vim9script
 
 const indicators = '▖▌▘▀▝▐▗▄'
-var indicator_phase = 0
 
 var message_id = 0
 
-export def Init(OnSubmit: func())
-  setl buftype=nofile bufhidden=hide filetype=markdown foldlevel=1 foldtext=FoldText()
-
-  b:askgpt_on_submit = OnSubmit
-
-  nnoremap <silent><buffer> <Plug>(askgpt-submit) :call askgpt#chatbuf#Submit()<CR>
-  inoremap <silent><buffer> <Plug>(askgpt-submit) <C-G>u<C-O>:call askgpt#chatbuf#Submit()<CR>
-
-  nnoremap <silent><buffer> <Plug>(askgpt-go-next-message) m':<C-R>=get(askgpt#chatbuf#GetNext(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
-  vnoremap <silent><buffer> <Plug>(askgpt-go-next-message) <Esc>m':exe "normal! gv"<Bar>:<C-R>=get(askgpt#chatbuf#GetNext(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
-  nnoremap <silent><buffer> <Plug>(askgpt-go-prev-message) m':<C-R>=get(askgpt#chatbuf#GetPrev(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
-  vnoremap <silent><buffer> <Plug>(askgpt-go-prev-message) <Esc>m':exe "normal! gv"<Bar>:<C-R>=get(askgpt#chatbuf#GetPrev(askgpt#chatbuf#GetNearest().id), 'lnum', line('.'))<CR><CR>
-
-  if !exists('g:askgpt_use_default_maps') || g:askgpt_use_default_maps
-    imap <buffer> <Return> <Plug>(askgpt-submit)
-    nmap <buffer> <Return> <Plug>(askgpt-submit)
-
-    nmap <buffer> ]] <Plug>(askgpt-go-next-message)
-    vmap <buffer> ]] <Plug>(askgpt-go-next-message)
-    nmap <buffer> [[ <Plug>(askgpt-go-prev-message)
-    vmap <buffer> [[ <Plug>(askgpt-go-prev-message)
-  endif
-
-  prop_type_add('askgpt_message', {bufnr: bufnr()})
-  prop_type_add('askgpt_user', {bufnr: bufnr(), highlight: 'DiffAdd'})
-  prop_type_add('askgpt_assistant', {bufnr: bufnr(), highlight: 'DiffChange'})
-  prop_type_add('askgpt_system', {bufnr: bufnr(), highlight: 'DiffText'})
-  prop_type_add('askgpt_prompt', {bufnr: bufnr(), highlight: 'DiffText'})
-  prop_type_add('askgpt_loading', {bufnr: bufnr(), highlight: 'DiffChange'})
-  prop_type_add('askgpt_discard', {bufnr: bufnr(), priority: 1, highlight: 'Comment'})
-  prop_type_add('askgpt_error', {bufnr: bufnr(), highlight: 'DiffDelete'})
-
-  AppendUserPrompt()
-  :1delete
-  :$
-
-  # clear undo history
-  const old_ul = &undolevels
-  setl undolevels=-1
-  exe "norm a \<BS>\<Esc>"
-  &undolevels = old_ul
-enddef
+export const marker_pattern = '\C^\[__\(User\|Assistant\|Share\|Prompt\|Error\)__\]$'
+export const all_marker_pattern = '\C^\[\(__\|\~\~\)\(User\|Assistant\|Share\|Prompt\|Error\)\1\]$'
 
 export def RemoveAll()
   :%delete
-  AppendUserPrompt()
+  AppendUserPrompt(bufnr())
   :1delete
   :$
 enddef
 
 export def Submit()
-  const prompt = GetUserPrompt()
+  const prompt = GetUserPrompt(bufnr())
   if prompt.lnum > line('.')
     return
   endif
@@ -69,119 +28,146 @@ export def Submit()
   deletebufline(bufnr(), prompt.lnum + 1, '$')
   setline(prompt.lnum + 1, split(input, "\n") + [''])
 
-  exec ':' .. prompt.lnum .. ',$fold'
-  exec ':' .. prompt.lnum .. 'foldopen'
-
-  AppendUserPrompt()
-  b:askgpt_on_submit()
+  AppendUserPrompt(bufnr())
+  :$
+  askgpt#Submit()
 enddef
 
-def AppendUserPrompt(): dict<any>
+def AppendUserPrompt(buf: number): dict<any>
   ++message_id
 
-  append('$', ['__User__', ''])
-  prop_add(line('$') - 1, 1, {
-    id: message_id,
-    type: 'askgpt_message',
+  while getbufoneline(buf, GetLineCount(buf)) == ''
+    deletebufline(buf, GetLineCount(buf))
+  endwhile
+
+  appendbufline(buf, GetLineCount(buf), ['', '[__User__]', ''])
+  prop_add(GetLineCount(buf) - 1, 1, {
+    bufnr: buf,
+    id:    message_id,
+    type:  'askgpt_message',
   })
-  prop_add(line('$') - 1, 1, {
-    id: message_id,
-    length: len(getline(line('$') - 1)),
-    type: 'askgpt_user',
-  })
-  :$
 
   return {
-    id: message_id,
-    lnum: line('$') - 1,
-    type: 'user',
+    id:   message_id,
+    lnum: GetLineCount(buf) - 1,
+    name: 'User',
   }
 enddef
 
-def AppendMessage(type: string, name: string, content: string, buf: number = 0): dict<any>
+def AppendMessage(buf: number, name: string, content: string): dict<any>
   const prompt = GetUserPrompt(buf)
 
-  return WriteMessage(prompt.lnum, type, name, content, buf)
+  return WriteMessage(buf, prompt.lnum, name, content)
 enddef
 
-def WriteMessage(lnum: number, type: string, name: string, content: string, buf: number = 0): dict<any>
-  const contents = (content->trim("\n") .. "\n\n")->split("\n")
+def WriteMessage(buf: number, lnum: number, name: string, content: string): dict<any>
+  const contents = (content->trim("\n")->substitute(all_marker_pattern, '[ \1\2\1 ]', 'g') .. "\n\n")->split("\n")
 
-  appendbufline(buf ?? bufnr(), lnum - 1, ['__' .. name .. '__'] + contents)
+  appendbufline(buf, lnum - 1, ['[__' .. name .. '__]'] + contents)
 
   ++message_id
   prop_add(lnum, 1, {
     bufnr: buf,
-    id: message_id,
-    type: 'askgpt_message',
-  })
-  prop_add(lnum, 1, {
-    bufnr: buf,
-    id: message_id,
-    length: len(name) + 4,
-    type: 'askgpt_' .. type,
+    id:    message_id,
+    type:  'askgpt_message',
   })
 
-  win_execute(win_findbuf(buf ?? bufnr())[0], ':' .. lnum .. ',' .. (lnum + len(contents)) .. 'fold | :' .. lnum .. 'foldopen')
+  silent! exec ':' .. lnum .. 'foldopen'
 
   return {
-    id: message_id,
+    id:   message_id,
     lnum: lnum,
-    type: type,
+    name: name,
   }
 enddef
 
-export def AppendUser(content: string, buf: number = 0): dict<any>
-  return AppendMessage('user', 'User', content, buf)
+export def AppendUser(buf: number, content: string): dict<any>
+  return AppendMessage(buf, 'User', content)
 enddef
 
-export def AppendAssistant(content: string, buf: number = 0): dict<any>
-  return AppendMessage('assistant', 'Assistant', content, buf)
+export def AppendAssistant(buf: number, content: string): dict<any>
+  return AppendMessage(buf, 'Assistant', content)
 enddef
 
-export def AppendSystem(name: string, content: string, buf: number = 0): dict<any>
-  return AppendMessage('system', name, content, buf)
+export def AppendShare(buf: number, content: string): dict<any>
+  return AppendMessage(buf, 'Share', content)
 enddef
 
-export def AppendSystemPrompt(content: string, buf: number = 0): dict<any>
-  return WriteMessage(1, 'prompt', 'Prompt', content, buf)
+export def AppendSystemPrompt(buf: number, content: string): dict<any>
+  const msg = WriteMessage(buf, 1, 'Prompt', content)
+  silent! exec ':' .. msg.lnum .. 'foldclose'
+  return msg
 enddef
 
-export def AppendError(content: string, buf: number = 0): dict<any>
-  return AppendMessage('error', 'Error', content, buf)
+export def AppendError(buf: number, content: string): dict<any>
+  return AppendMessage(buf, 'Error', content)
 enddef
 
-export def AppendLoading(buf: number = 0): dict<any>
-  const prop = AppendMessage('loading', 'Assistant', indicators[indicator_phase], buf)
+export def AppendLoading(buf: number): dict<any>
+  const prop = AppendMessage(buf, 'Assistant', indicators[get(b:, 'askgpt_indicator_phase', 0)])
+  prop_add(prop.lnum + 1, 1, {
+    bufnr: buf,
+    id:    prop.id,
+    type:  'askgpt_indicator',
+  })
 
-  const bnr = buf ?? bufnr()
-  timer_start(100, (timer) => UpdateTimer(bnr, prop.id))
+  b:askgpt_loading_text = get(b:, 'askgpt_loading_text', {})
+  b:askgpt_loading_text[string(prop.id)] = ''
+
+  timer_start(100, (timer) => UpdateIndicator(buf, prop.id))
 
   return prop
 enddef
 
-export def UpdateLoading(id: number, content: string, buf: number = 0)
-  const prop = prop_find({bufnr: buf, id: id, type: 'askgpt_loading', both: true, lnum: 1}, 'f')
-  const bnr = buf ?? bufnr()
-  deletebufline(bnr, prop.lnum + 1, GetNext(id, bnr).lnum - 2)
-  appendbufline(bnr, prop.lnum, (content->trim() .. indicators[indicator_phase])->split("\n"))
+export def UpdateLoading(buf: number, id: number, message: string)
+  b:askgpt_loading_text[string(id)] = message
 enddef
 
-export def GetUserPrompt(buf: number = 0): dict<any>
+def UpdateTextProps(buf: number)
+  for lnum in range(1, GetLineCount(buf))
+    if getbufoneline(buf, lnum) =~ all_marker_pattern
+      UpdateOneTextProp(buf, lnum)
+    else
+      try
+        prop_remove({bufnr: buf, types: ['askgpt_message']}, lnum)
+      catch
+      endtry
+    endif
+  endfor
+enddef
+
+def UpdateOneTextProp(buf: number, lnum: number): number
+  const props = prop_list(lnum, {bufnr: buf, type: 'askgpt_message'})
+  if len(props) > 0
+    return props[0].id
+  endif
+
+  ++message_id
+  prop_add(lnum, 1, {
+    bufnr: buf,
+    id:    message_id,
+    type:  'askgpt_message',
+  })
+  return message_id
+enddef
+
+export def GetUserPrompt(buf: number): dict<any>
+  UpdateTextProps(buf)
+
   const prop = prop_find({
     bufnr: buf,
-    type: 'askgpt_message',
-    lnum: GetLineCount(buf),
+    type:  'askgpt_message',
+    lnum:  GetLineCount(buf),
   }, 'b')
 
-  if len(prop) == 0 || GetType(prop.lnum, buf) != 'user'
-    return AppendUserPrompt()
+  if len(prop) == 0 || getbufoneline(buf, prop.lnum) != '[__User__]'
+    return AppendUserPrompt(bufnr())
   endif
 
   return {
-    id: prop.id,
+    id:   prop.id,
     lnum: prop.lnum,
-    type: 'user',
+    name: 'User',
   }
 enddef
 
@@ -189,72 +175,61 @@ def GetLineCount(buf: number = 0): number
   return getbufinfo(buf ?? bufnr())->get(0, {})->get('linecount', 0)
 enddef
 
-export def GetLastOfType(type: string, buf: number = 0): dict<any>
-  const prompt_lnum = GetUserPrompt(buf).lnum
-  const prop = prop_find({bufnr: buf, type: 'askgpt_' .. type, lnum: prompt_lnum, skipstart: true}, 'b')
-  if len(prop) == 0
+export def FindLast(names: list<string>): dict<any>
+  const view = winsaveview()
+  defer winrestview(view)
+
+  :$
+  search('\C^\[__User__\]$', 'bW')
+
+  var lnum = 0
+  var name = ''
+  for n in names
+    const l = search('\C^\[__' .. n .. '__\]$', 'bnW')
+    if 0 < l && lnum < l
+      lnum = l
+      name = n
+    endif
+  endfor
+  if lnum == 0
     return null_dict
   endif
 
+  const id = UpdateOneTextProp(bufnr(), lnum)
+
   return {
-    id: prop.id,
-    lnum: prop.lnum,
-    type: type,
+    id:   id,
+    lnum: lnum,
+    name: name,
   }
 enddef
 
-export def GetLastOfTypes(types: list<string>, buf: number = 0): dict<any>
-  var prop = null_dict
-  for type in types
-    const p = GetLastOfType(type, buf)
-    if prop == null_dict
-      prop = p
-      continue
-    endif
-
-    if p != null_dict && p.lnum > prop.lnum
-      prop = p
-    endif
-  endfor
-  return prop
-enddef
-
-def GetNeighbor(orient: string, id: number, buf: number = 0): dict<any>
-  const base = prop_find({bufnr: buf, id: id, lnum: 1}, 'f')
+export def FindNext(buf: number, id: number): dict<any>
+  const base = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: 1}, 'f')
   if len(base) == 0
     return null_dict
   endif
 
-  const prop = prop_find({bufnr: buf, type: 'askgpt_message', lnum: base.lnum, skipstart: true}, orient)
-  if len(prop) == 0
-    return null_dict
-  endif
+  while true
+    const next = prop_find({bufnr: buf, type: 'askgpt_message', lnum: base.lnum, skipstart: true}, 'f')
+    if len(next) == 0
+      return null_dict
+    endif
 
-  return {
-    id: prop.id,
-    lnum: prop.lnum,
-    type: GetType(prop.lnum, buf),
-  }
+    const line = getbufoneline(bufnr(), next.lnum)
+    if line =~ marker_pattern
+      return {
+        id:   next.id,
+        lnum: next.id,
+        name: line->substitute(marker_pattern, '\1', ''),
+      }
+    endif
+  endwhile
+
+  return null_dict
 enddef
 
-export def GetNearest(buf: number = 0): dict<any>
-  const prop = prop_find({bufnr: buf, type: 'askgpt_message'}, 'b')
-  return {
-    id: prop.id,
-    lnum: prop.lnum,
-    type: GetType(prop.lnum, buf),
-  }
-enddef
-
-export def GetPrev(id: number, buf: number = 0): dict<any>
-  return GetNeighbor('b', id, buf)
-enddef
-
-export def GetNext(id: number, buf: number = 0): dict<any>
-  return GetNeighbor('f', id, buf)
-enddef
-
-export def Delete(id: number, buf: number = 0): bool
+export def Delete(buf: number, id: number): bool
   const start = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: 1}, 'f')
   if len(start) == 0
     return false
@@ -263,7 +238,7 @@ export def Delete(id: number, buf: number = 0): bool
   final end = prop_find({bufnr: buf, type: 'askgpt_message', lnum: start.lnum, skipstart: true}, 'f')
   if len(end) == 0
     end['lnum'] = GetLineCount(buf)
-    defer AppendUserPrompt()
+    defer AppendUserPrompt(bufnr())
   endif
 
   deletebufline(buf ?? bufnr(), start.lnum, end.lnum - 1)
@@ -271,38 +246,42 @@ export def Delete(id: number, buf: number = 0): bool
   return true
 enddef
 
-export def Discard(id: number, buf: number = 0)
-  prop_remove({
+export def Discard(buf: number, id: number): bool
+  const prop = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: 1}, 'f')
+  if len(prop) == 0
+    return false
+  endif
+
+  const ln = getbufoneline(buf, prop.lnum)
+  if ln !~ marker_pattern
+    return false
+  endif
+
+  ln->substitute(marker_pattern, '[~~\1~~]', '')->setbufline(buf, prop.lnum)
+  prop_add(prop.lnum, 1, {
     bufnr: buf,
-    id: id,
-    types: ['askgpt_user', 'askgpt_assistant', 'askgpt_system', 'askgpt_discard'],
-    both: true,
-    all: true,
+    id:    id,
+    type:  'askgpt_message',
   })
 
-  const first_line = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: GetLineCount(buf)}, 'b').lnum
-  const last_line = prop_find({bufnr: buf, type: 'askgpt_message', lnum: first_line, skipstart: true}, 'f').lnum - 1
-  prop_add(first_line, 1, {
-    bufnr: buf,
-    id: id,
-    end_lnum: last_line,
-    type: 'askgpt_discard',
-  })
+  return true
 enddef
 
-export def GetSystemPrompt(buf: number = 0): string
-  const prop = prop_find({bufnr: buf, type: 'askgpt_prompt', lnum: 1}, 'f')
-  if len(prop) == 0
+export def GetSystemPrompt(buf: number): string
+  const prop = FindLast(['Prompt'])
+  if prop == null_dict
     return ''
   endif
 
-  const next = prop_find({bufnr: buf, type: 'askgpt_message', lnum: 2}, 'f')
+  const next = prop_find({bufnr: buf, type: 'askgpt_message', lnum: prop.lnum + 1}, 'f')
 
-  return getbufline(buf ?? bufnr(), prop.lnum + 1, (get(next, 'lnum', 1) - 1) ?? '$')->join("\n")->trim("\n")
+  return getbufline(buf, prop.lnum + 1, (get(next, 'lnum', 1) - 1) ?? '$')->join("\n")->trim("\n")
 enddef
 
 export def GetHistory(max: number): list<dict<string>>
-  var lnum = GetUserPrompt().lnum
+  UpdateTextProps(bufnr())
+
+  var lnum = prop_find({type: 'askgpt_message', lnum: line('$')}, 'b').lnum
 
   final msgs: list<dict<string>> = []
 
@@ -312,14 +291,20 @@ export def GetHistory(max: number): list<dict<string>>
       break
     endif
 
-    const type = GetType(prop.lnum)
-    if index(['user', 'assistant', 'system'], type) < 0
+    const name = getbufoneline(bufnr(), prop.lnum)->substitute('\C^\[__\(User\|Assistant\|Share\)__\]$', '\1', '')
+    if index(['User', 'Assistant', 'Share'], name) < 0
       lnum = prop.lnum
       continue
     endif
 
+    const role = {
+      'User':      'user',
+      'Assistant': 'assistant',
+      'Share':     'system',
+    }[name]
+
     insert(msgs, {
-      role: type,
+      role:    role,
       content: getline(prop.lnum + 1, lnum - 1)->join("\n")->trim("\n"),
     })
 
@@ -329,33 +314,29 @@ export def GetHistory(max: number): list<dict<string>>
   return msgs
 enddef
 
-def GetType(lnum: number, buf: number = 0): string
-  const types = prop_list(lnum, {bufnr: buf, types: ['askgpt_user', 'askgpt_assistant', 'askgpt_system', 'askgpt_prompt', 'askgpt_loading', 'askgpt_discard', 'askgpt_error']})
-  if len(types) == 0
-    return ''
-  endif
-
-  return substitute(types[0].type, 'askgpt_', '', '')
-enddef
-
-def FoldText(): string
-  const line = getline(v:foldstart)
-  if line =~ '__[A-Z][a-z]\+__'
-    return substitute(line, '__', '', 'g') .. ' '
-  endif
-  return '+' .. v:folddashes .. '  ' .. (v:foldend - v:foldstart + 1) .. ' lines: ' .. line
-enddef
-
-def UpdateTimer(buf: number, id: number)
-  indicator_phase = (indicator_phase + 1) % strchars(indicators)
-
-  const prop = GetNext(id, buf)
-  if prop == null_dict
+def UpdateIndicator(buf: number, id: number)
+  const start = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: 1}, 'f')
+  const end = prop_find({bufnr: buf, id: id, type: 'askgpt_indicator', both: true, lnum: get(start, 'lnum', 1) + 1}, 'f')
+  if len(start) == 0 || len(end) == 0
+    remove(b:askgpt_loading_text, string(id))
     return
   endif
-  getbufoneline(buf, prop.lnum - 2)
-    ->substitute('[' .. indicators .. ']$', indicators[indicator_phase], '')
-    ->setbufline(buf, prop.lnum - 2)
 
-  timer_start(100, (timer) => UpdateTimer(buf, id))
+  b:askgpt_indicator_phase = (get(b:, 'askgpt_indicator_phase', 0) + 1) % strchars(indicators)
+
+  var contents = [indicators[b:askgpt_indicator_phase]]
+  if b:askgpt_loading_text[string(id)] != ''
+    contents = split(b:askgpt_loading_text[string(id)] .. ' ' .. indicators[b:askgpt_indicator_phase], "\n")
+  endif
+
+  deletebufline(buf, start.lnum + 1, end.lnum)
+  appendbufline(buf, start.lnum, contents)
+
+  prop_add(start.lnum + len(contents), 1, {
+    bufnr: buf,
+    id:    id,
+    type:  'askgpt_indicator',
+  })
+
+  timer_start(100, (timer) => UpdateIndicator(buf, id))
 enddef
