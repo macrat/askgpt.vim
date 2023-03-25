@@ -39,9 +39,19 @@ endif
 command -buffer AskGPTRetry askgpt#Retry()
 
 
-setl foldmethod=syntax foldlevel=2
-norm zR
+setl foldmethod=syntax foldlevel=2 foldtext=FoldText()
 if getline(1) == '[__Prompt__]'
   :1foldclose
 endif
 :$
+
+def FoldText(): string
+  const line = getline(v:foldstart)
+  if line =~ '\C^\[__[A-Z][a-z]\+__\]$'
+    return substitute(line, '[\[_\]]', '', 'g') .. ' '
+  elseif line =~ '^`\{3,\}'
+    return '+-' .. v:folddashes .. '  ' .. (v:foldend - v:foldstart + 1) .. ' lines code block: ' .. substitute(line, '^`\+', '', '') .. ' '
+  else
+    return foldtext()
+  endif
+enddef
