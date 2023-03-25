@@ -112,7 +112,7 @@ def ShareRange(buf: number, range: dict<any>)
     return
   endif
 
-  const contents = QuoteCodeBlock(range.ftype, range.content->join("\n"))-> split("\n")
+  const contents = QuoteCodeBlock(range.ftype, range.content->join("\n"))->split("\n")
 
   const msg = askgpt#chatbuf#AppendShare(bufnr(), join([
     'User has shared a part of file to Assistant.',
@@ -124,6 +124,7 @@ def ShareRange(buf: number, range: dict<any>)
     '',
   ], "\n"))
 
+  exec ':' .. (msg.lnum + 6) .. ',' .. (msg.lnum + 5 + len(contents)) .. 'fold'
   norm Gzb
 enddef
 

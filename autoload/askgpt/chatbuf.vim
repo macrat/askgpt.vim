@@ -29,8 +29,8 @@ export def Submit()
   setline(prompt.lnum + 1, split(input, "\n") + [''])
 
   AppendUserPrompt(bufnr())
-  silent! exec ':' .. (prompt.lnum + 1) .. 'foldopen'
   :$
+  silent! exec ':' .. prompt.lnum .. ',' .. (line('$') - 2) .. 'fold | :' .. (prompt.lnum + 1) .. 'foldopen'
   askgpt#Submit()
 enddef
 
@@ -73,7 +73,7 @@ def WriteMessage(buf: number, lnum: number, name: string, content: string): dict
     type:  'askgpt_message',
   })
 
-  silent! exec ':' .. (lnum + 1) .. 'foldopen'
+  silent! exec ':' .. lnum .. ',' .. (lnum + len(contents)) .. 'fold | :' .. (lnum + 1) .. 'foldopen'
 
   return {
     id:   message_id,

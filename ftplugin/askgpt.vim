@@ -39,9 +39,13 @@ endif
 command -buffer AskGPTRetry askgpt#Retry()
 
 
-setl foldmethod=syntax foldlevel=2 foldtext=FoldText()
+setl foldmethod=manual foldlevel=2 foldtext=FoldText()
 if getline(1) == '[__Prompt__]'
-  :1foldclose
+  const next = search('\C^\[__[A-Z][a-z]\+__\]$', 'nW')
+  if next > 0
+    :1
+    exec ':1,' .. (next - 1) .. 'fold'
+  endif
 endif
 :$
 
