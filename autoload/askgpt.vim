@@ -12,29 +12,36 @@ def CheckSettingAndFeatures(): bool
   return true
 enddef
 
-export def Open(prompt='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
+export def Open(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
   if !CheckSettingAndFeatures()
     return
   endif
 
-  const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
+  const existwin = getwininfo()
+    ->filter((idx, val) => getwinvar(val.winnr, '&filetype') == 'askgpt')
+    ->sort((x, y) => getbufinfo(y.bufnr)->get('lastused', 0) - getbufinfo(x.bufnr)->get('lastused', 0))
+    ->get(0, {})
+    ->get('winnr', -1)
 
-  const existwin = bufwinnr('askgpt://')
   if existwin < 0
-    silent new askgpt://
-  else
-    exec ':' .. existwin .. 'wincmd w'
+    Create(prompt, useRange, rangeFrom, rangeTo)
+    return
   endif
 
-  if wipe
-    askgpt#api#Cancel()
-    askgpt#chatbuf#RemoveAll()
+  const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
+  exec ':' .. existwin .. 'wincmd w'
+  PostOpen(prompt, range)
+enddef
 
-    SetSystemPrompt()
-  endif
+export def Create(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
+  const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
+  exec 'new ' .. strftime('%Y%m%d%H%M%S.askgpt.md')
+  PostOpen(prompt, range)
+enddef
 
+def PostOpen(prompt='', range=null_dict)
   if prompt != ''
-    askgpt#chatbuf#AppendUser(prompt)
+    askgpt#chatbuf#AppendUser(bufnr(), prompt)
     ShareRange(bufnr(), range)
     Submit()
   else
@@ -42,24 +49,14 @@ export def Open(prompt='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
   endif
 enddef
 
-export def Init()
-  if !CheckSettingAndFeatures()
-    return
-  endif
-
-  askgpt#chatbuf#Init(Submit)
-
-  SetSystemPrompt()
-enddef
-
-export def ScanAndFix()
+export def TextChanged()
   # make sure that system prompt exists.
-  if askgpt#chatbuf#GetLastOfType('prompt') == null_dict
+  if askgpt#chatbuf#FindLast(['Prompt']) == null_dict
     SetSystemPrompt()
   endif
 
   # make sure that user prompt exists.
-  askgpt#chatbuf#GetUserPrompt()
+  askgpt#chatbuf#GetUserPrompt(bufnr())
 enddef
 
 def SetSystemPrompt()
@@ -67,32 +64,30 @@ def SetSystemPrompt()
                       .. "Answer very concise and clear, shorter than 80 chars per line.\n"
                       .. "Chat syntax: markdown\n"
                       .. "File types user is editing: {filetypes}"
-  askgpt#chatbuf#AppendSystemPrompt(get(g:, 'askgpt_prompt', default_prompt))
-
-  :1foldclose
+  askgpt#chatbuf#AppendSystemPrompt(bufnr(), get(g:, 'askgpt_prompt', default_prompt))
 enddef
 
 export def Retry()
-  Open()
+  if !CheckSettingAndFeatures()
+    return
+  endif
 
   if askgpt#api#IsRunning()
     echoerr 'Cannot retry while generating message.'
     return
   endif
 
-  const prompt = askgpt#chatbuf#GetUserPrompt()
+  const prompt = askgpt#chatbuf#GetUserPrompt(bufnr())
 
-  var msg = askgpt#chatbuf#GetLastOfTypes(['assistant', 'error'])
+  var msg = askgpt#chatbuf#FindLast(['Assistant', 'Error'])
   if msg != null_dict
     while msg != null_dict && msg.id != prompt.id
-      if msg.type != 'discard'
-        askgpt#chatbuf#Discard(msg.id)
-      endif
-      msg = askgpt#chatbuf#GetNext(msg.id)
+      askgpt#chatbuf#Discard(bufnr(), msg.id)
+      msg = askgpt#chatbuf#FindNext(bufnr(), msg.id)
     endwhile
   endif
 
-  if askgpt#chatbuf#GetLastOfType('user') == null_dict
+  if askgpt#chatbuf#FindLast(['User']) == null_dict
     echoerr 'There is nothing to retry.'
     return
   endif
@@ -116,19 +111,19 @@ def ShareRange(buf: number, range: dict<any>)
     return
   endif
 
-  const content = QuoteCodeBlock(range.ftype, range.content->join("\n"))
+  const contents = QuoteCodeBlock(range.ftype, range.content->join("\n"))->split("\n")
 
-  const msg = askgpt#chatbuf#AppendSystem('Share', join([
+  const msg = askgpt#chatbuf#AppendShare(bufnr(), join([
     'User has shared a part of file to Assistant.',
     '',
     'name: ' .. range.fname,
     'line: from ' .. range.from .. ' to ' .. range.to .. ' out of ' .. range.total,
     'content:',
-  ] + content->split("\n") + [
+  ] + contents + [
     '',
   ], "\n"))
 
-  exec ':' .. (msg.lnum + 6) .. ',' .. (msg.lnum + 7 + len(range.content)) .. 'fold'
+  exec ':' .. (msg.lnum + 6) .. ',' .. (msg.lnum + 5 + len(contents)) .. 'fold'
   norm Gzb
 enddef
 
@@ -143,8 +138,12 @@ def QuoteCodeBlock(filetype: string, code: string): string
   return quote .. filetype .. "\n" .. code .. "\n" .. quote
 enddef
 
-def Submit()
-  const indicator = askgpt#chatbuf#AppendLoading()
+export def Submit()
+  if !CheckSettingAndFeatures()
+    return
+  endif
+
+  const indicator = askgpt#chatbuf#AppendLoading(bufnr())
 
   const prompt = [{
     role: 'system',
@@ -162,7 +161,7 @@ def Submit()
 enddef
 
 def GeneratePrompt(): string
-  var prompt = askgpt#chatbuf#GetSystemPrompt()
+  var prompt = askgpt#chatbuf#GetSystemPrompt(bufnr())
 
   if prompt =~ '{filetypes}'
     prompt = substitute(prompt, '{filetypes}', GetEditingFileTypes()->join(', '), 'g')
@@ -189,19 +188,31 @@ def GetEditingFileTypes(): list<string>
     ->uniq()
 enddef
 
+final cancelled_ids = {}
+
 def OnUpdate(buf: number, indicator: number, message: string)
-  askgpt#chatbuf#UpdateLoading(indicator, message, buf)
+  if has_key(cancelled_ids, string(indicator))
+    return
+  endif
+
+  try
+    askgpt#chatbuf#UpdateLoading(buf, indicator, message)
+  catch
+    cancelled_ids[string(indicator)] = 1
+    askgpt#api#Cancel()
+    echow 'Cancel generating'
+  endtry
 enddef
 
 def OnFinish(buf: number, indicator: number, message: string)
-  const deleted = askgpt#chatbuf#Delete(indicator, buf)
+  const deleted = askgpt#chatbuf#Delete(buf, indicator)
   if deleted
-    askgpt#chatbuf#AppendAssistant(message, buf)
+    askgpt#chatbuf#AppendAssistant(buf, message)
   endif
 enddef
 
 def OnError(buf: number, indicator: number, resp: string, status: number)
-  const deleted = askgpt#chatbuf#Delete(indicator, buf)
+  const deleted = askgpt#chatbuf#Delete(buf, indicator)
 
   if !deleted || status < 0
     return
@@ -209,7 +220,7 @@ def OnError(buf: number, indicator: number, resp: string, status: number)
 
   try
     const error: dict<string> = json_decode(resp).error
-    askgpt#chatbuf#AppendError('**' .. error.type .. '**: ' .. error.message, buf)
+    askgpt#chatbuf#AppendError(buf, '**' .. error.type .. '**: ' .. error.message)
   catch
     var resptype = 'json'
     try
@@ -217,6 +228,6 @@ def OnError(buf: number, indicator: number, resp: string, status: number)
     catch
       resptype = ''
     endtry
-    askgpt#chatbuf#AppendError(QuoteCodeBlock(resptype, resp) .. "\nStatus code: " .. status, buf)
+    askgpt#chatbuf#AppendError(buf, QuoteCodeBlock(resptype, resp) .. "\nStatus code: " .. status)
   endtry
 enddef

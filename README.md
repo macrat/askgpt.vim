@@ -24,7 +24,7 @@ A Vim plugin that provides a ChatGPT interface.
    let g:askgpt_api_key = 'xxxxxxxxxxxxxxxx'
    ```
 
-3. Open Vim and execute `:AskGPT` command to open the chat window.
+3. Open Vim and execute `:AskGPT` command, or open a `*.askgpt.md` file.
 
 4. Ask your AI assistant anything and press Enter.
 

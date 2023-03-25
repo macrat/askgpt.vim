@@ -1,12 +1,6 @@
 vim9script
 
-command -nargs=? -range -bang AskGPT askgpt#Open(<q-args>, "<bang>" != "", <range> != 0, <line1>, <line2>)
-command AskGPTRetry askgpt#Retry()
-
-augroup askgpt-internal
-  au BufReadCmd  askgpt:// askgpt#Init()
-  au TextChanged askgpt:// askgpt#ScanAndFix()
-augroup END
+command -nargs=? -range -bang AskGPT if "<bang>" == "" | askgpt#Open(<q-args>, <range> != 0, <line1>, <line2>) | else | askgpt#Create(<q-args>, <range> != 0, <line1>, <line2>) | endif
 
 g:askgpt_model        = get(g:, 'askgpt_model', 'gpt-3.5-turbo')
 g:askgpt_history_size = get(g:, 'askgpt_history_size', 10)
