@@ -36,7 +36,8 @@ if !exists('g:askgpt_use_default_maps') || g:askgpt_use_default_maps
 endif
 
 
-command -buffer AskGPTRetry askgpt#Retry()
+command -buffer AskGPTRetry  askgpt#Retry()
+command -buffer AskGPTCancel askgpt#Cancel()
 
 
 setl foldmethod=manual foldlevel=2 foldtext=FoldText()

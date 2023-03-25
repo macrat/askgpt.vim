@@ -95,6 +95,15 @@ export def Retry()
   Submit()
 enddef
 
+export def Cancel()
+  if !askgpt#api#IsRunning()
+    echoerr 'There is nothing to cancel.'
+    return
+  endif
+
+  askgpt#api#Cancel()
+enddef
+
 def CaptureRange(from: number, to: number): dict<any>
   return {
     fname: expand('%'),

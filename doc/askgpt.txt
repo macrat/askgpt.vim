@@ -63,6 +63,9 @@ COMMANDS                                                     *askgpt-commands*
 	This command always opens a new chat buffer, while |:AskGPT| focus an
 	existing buffer if one already exists.
 
+:AskGPTCancel                                                  *:AskGPTCancel*
+	Cancel to generate message.
+
 :AskGPTRetry                                                    *:AskGPTRetry*
 	Generate last AI message again.
 
