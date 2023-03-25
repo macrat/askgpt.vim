@@ -112,8 +112,7 @@ export def AppendLoading(buf: number): dict<any>
     type:  'askgpt_indicator',
   })
 
-  b:askgpt_loading_text = get(b:, 'askgpt_loading_text', {})
-  b:askgpt_loading_text[string(prop.id)] = ''
+  b:askgpt_loading_text = getbufvar(buf, 'askgpt_loading_text', {})
 
   timer_start(100, (timer) => UpdateIndicator(buf, prop.id))
 
@@ -121,7 +120,8 @@ export def AppendLoading(buf: number): dict<any>
 enddef
 
 export def UpdateLoading(buf: number, id: number, message: string)
-  b:askgpt_loading_text[string(id)] = message
+  final texts = getbufvar(buf, 'askgpt_loading_text', {})
+  texts[string(id)] = message
 enddef
 
 def UpdateTextProps(buf: number)
@@ -319,15 +319,22 @@ def UpdateIndicator(buf: number, id: number)
   const start = prop_find({bufnr: buf, id: id, type: 'askgpt_message', both: true, lnum: 1}, 'f')
   const end = prop_find({bufnr: buf, id: id, type: 'askgpt_indicator', both: true, lnum: get(start, 'lnum', 1) + 1}, 'f')
   if len(start) == 0 || len(end) == 0
-    remove(b:askgpt_loading_text, string(id))
+    final texts = getbufvar(buf, 'askgpt_loading_text', {})
+    try
+      remove(texts, string(id))
+    catch
+    endtry
     return
   endif
 
-  b:askgpt_indicator_phase = (get(b:, 'askgpt_indicator_phase', 0) + 1) % strchars(indicators)
+  const phase = (getbufvar(buf, 'askgpt_indicator_phase', 0) + 1) % strchars(indicators)
+  setbufvar(buf, 'askgpt_indicator_phase', phase)
 
-  var contents = [indicators[b:askgpt_indicator_phase]]
-  if b:askgpt_loading_text[string(id)] != ''
-    contents = split(b:askgpt_loading_text[string(id)] .. ' ' .. indicators[b:askgpt_indicator_phase], "\n")
+  const text = get(getbufvar(buf, 'askgpt_loading_text', {}), string(id), '')
+
+  var contents = [indicators[phase]]
+  if text != ''
+    contents = split(text .. ' ' .. indicators[phase], "\n")
   endif
 
   deletebufline(buf, start.lnum + 1, end.lnum)
