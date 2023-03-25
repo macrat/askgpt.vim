@@ -58,9 +58,10 @@ COMMANDS                                                     *askgpt-commands*
 >
 
 :[range]AskGPT! [{message}]                                         *:AskGPT!*
-	Open or focus a chat window.
-	It clear all chat history if there is a chat buffer already.
-	Other behaviors are the same as |:AskGPT|.
+	Open a new chat window.
+
+	This command always opens a new chat buffer, while |:AskGPT| focus an
+	existing buffer if one already exists.
 
 :AskGPTRetry                                                    *:AskGPTRetry*
 	Generate last AI message again.

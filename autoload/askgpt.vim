@@ -12,32 +12,35 @@ def CheckSettingAndFeatures(): bool
   return true
 enddef
 
-export def Open(prompt='', wipe=false, useRange=false, rangeFrom=0, rangeTo=0)
+export def Open(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
   if !CheckSettingAndFeatures()
     return
   endif
-
-  const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
 
   const existwin = getwininfo()
     ->filter((idx, val) => getwinvar(val.winnr, '&filetype') == 'askgpt')
     ->sort((x, y) => getbufinfo(y.bufnr)->get('lastused', 0) - getbufinfo(x.bufnr)->get('lastused', 0))
     ->get(0, {})
     ->get('winnr', -1)
+
   if existwin < 0
-    exec 'new ' .. strftime('%Y%m%d%H%M%S.askgpt.md')
-    :$
-  else
-    exec ':' .. existwin .. 'wincmd w'
+    Create(prompt, useRange, rangeFrom, rangeTo)
+    return
   endif
 
-  if wipe
-    askgpt#api#Cancel()
-    askgpt#chatbuf#RemoveAll()
+  const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
+  exec ':' .. existwin .. 'wincmd w'
+enddef
 
-    SetSystemPrompt()
-  endif
+export def Create(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
+  const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
 
+  exec 'new ' .. strftime('%Y%m%d%H%M%S.askgpt.md')
+
+  PostOpen(prompt, range)
+enddef
+
+def PostOpen(prompt='', range=null_dict)
   if prompt != ''
     askgpt#chatbuf#AppendUser(bufnr(), prompt)
     ShareRange(bufnr(), range)
