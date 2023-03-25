@@ -37,11 +37,13 @@ enddef
 def AppendUserPrompt(buf: number): dict<any>
   ++message_id
 
-  while getbufoneline(buf, GetLineCount(buf)) == ''
-    deletebufline(buf, GetLineCount(buf))
-  endwhile
+  final prompt = ['[__User__]', '']
 
-  appendbufline(buf, GetLineCount(buf), ['', '[__User__]', ''])
+  if getbufoneline(buf, GetLineCount(buf)) != ''
+    insert(prompt, '')
+  endif
+
+  appendbufline(buf, GetLineCount(buf), prompt)
   prop_add(GetLineCount(buf) - 1, 1, {
     bufnr: buf,
     id:    message_id,
@@ -74,6 +76,10 @@ def WriteMessage(buf: number, lnum: number, name: string, content: string): dict
   })
 
   silent! exec ':' .. lnum .. ',' .. (lnum + len(contents)) .. 'fold | :' .. (lnum + 1) .. 'foldopen'
+
+  while getbufline(buf, lnum + 1 + len(contents)) == ['']
+    deletebufline(buf, lnum + 1 + len(contents))
+  endwhile
 
   return {
     id:   message_id,

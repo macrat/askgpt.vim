@@ -52,15 +52,11 @@ enddef
 export def TextChanged()
   # make sure that system prompt exists.
   if askgpt#chatbuf#FindLast(['Prompt']) == null_dict
-    SetSystemPrompt()
+    askgpt#chatbuf#AppendSystemPrompt(bufnr(), g:askgpt_prompt)
   endif
 
   # make sure that user prompt exists.
   askgpt#chatbuf#GetUserPrompt(bufnr())
-enddef
-
-def SetSystemPrompt()
-  askgpt#chatbuf#AppendSystemPrompt(bufnr(), g:askgpt_prompt)
 enddef
 
 export def Retry()
