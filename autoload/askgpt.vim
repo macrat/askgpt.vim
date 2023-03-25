@@ -30,13 +30,12 @@ export def Open(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
 
   const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
   exec ':' .. existwin .. 'wincmd w'
+  PostOpen(prompt, range)
 enddef
 
 export def Create(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
   const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
-
   exec 'new ' .. strftime('%Y%m%d%H%M%S.askgpt.md')
-
   PostOpen(prompt, range)
 enddef
 
