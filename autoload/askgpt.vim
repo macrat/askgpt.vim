@@ -1,12 +1,12 @@
 vim9script
 
 def CheckSettingAndFeatures(): bool
-  if !exists('g:askgpt_api_key')
-    echoerr 'Please set g:askgpt_api_key before use AskGPT.vim.'
-    return false
-  endif
   if !has('job') || !has('channel')
     echoerr 'AskGPT.vim requires +job and +channel features.'
+    return false
+  endif
+  if g:askgpt_api_key == ''
+    echoerr 'Please set g:askgpt_api_key before use AskGPT.vim.'
     return false
   endif
   return true
@@ -60,11 +60,7 @@ export def TextChanged()
 enddef
 
 def SetSystemPrompt()
-  const default_prompt = "You are AskGPT.vim, an AI conversation assistant.\n"
-                      .. "Answer very concise and clear, shorter than 80 chars per line.\n"
-                      .. "Chat syntax: markdown\n"
-                      .. "File types user is editing: {filetypes}"
-  askgpt#chatbuf#AppendSystemPrompt(bufnr(), get(g:, 'askgpt_prompt', default_prompt))
+  askgpt#chatbuf#AppendSystemPrompt(bufnr(), g:askgpt_prompt)
 enddef
 
 export def Retry()
