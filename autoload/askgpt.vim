@@ -183,8 +183,8 @@ enddef
 
 def GetEditingFileTypes(): list<string>
   return getwininfo()
-    ->filter((_, win) => bufname(win.bufnr) !~ '^askgpt://')
     ->map((_, win) => getwinvar(win.winid, '&ft'))
+    ->filter((_, ft) => ft !~ '^askgpt\.')
     ->sort()
     ->uniq()
 enddef
