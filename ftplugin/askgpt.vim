@@ -12,6 +12,10 @@ catch
 endtry
 
 askgpt#TextChanged()
+augroup askgpt-internal
+  au!
+  au TextChanged <buffer> askgpt#TextChanged()
+augroup END
 
 
 const marker_pattern = '\C^\[\(__\|\~\~\)\(User\|Assistant\|Share\|Prompt\|Error\)\1\]$'
