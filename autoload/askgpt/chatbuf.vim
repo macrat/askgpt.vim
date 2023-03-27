@@ -131,10 +131,18 @@ export def UpdateLoading(buf: number, id: number, message: string)
 enddef
 
 def UpdateTextProps(buf: number)
+  var quote = 0
   for lnum in range(1, GetLineCount(buf))
-    if getbufoneline(buf, lnum) =~ all_marker_pattern
+    const line = getbufoneline(buf, lnum)
+    if quote == 0 && line =~ all_marker_pattern
       UpdateOneTextProp(buf, lnum)
     else
+      if quote == 0 && line =~ '^\s*`\{3,\}'
+        quote = matchstr(line, '^\s*\zs`\{3,\}')->strchars()
+      elseif quote > 0 && line =~ '^\s*`\{' .. quote .. '\}\s*$'
+        quote = 0
+      endif
+
       try
         prop_remove({bufnr: buf, types: ['askgpt_message']}, lnum)
       catch
