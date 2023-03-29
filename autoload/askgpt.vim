@@ -18,7 +18,7 @@ export def Open(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
   endif
 
   const existwin = getwininfo()
-    ->filter((idx, val) => getwinvar(val.winnr, '&filetype') == 'askgpt')
+    ->filter((idx, val) => getwinvar(val.winnr, '&filetype') =~ '^askgpt\(\..\+\)$')
     ->sort((x, y) => getbufinfo(y.bufnr)->get('lastused', 0) - getbufinfo(x.bufnr)->get('lastused', 0))
     ->get(0, {})
     ->get('winnr', -1)
