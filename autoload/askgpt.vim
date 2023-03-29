@@ -215,7 +215,7 @@ enddef
 def OnError(buf: number, indicator: number, resp: string, status: number)
   const deleted = askgpt#chatbuf#Delete(buf, indicator)
 
-  if !deleted || status < 0
+  if !deleted
     return
   endif
 
@@ -229,6 +229,6 @@ def OnError(buf: number, indicator: number, resp: string, status: number)
     catch
       resptype = ''
     endtry
-    askgpt#chatbuf#AppendError(buf, QuoteCodeBlock(resptype, resp) .. "\nStatus code: " .. status)
+    askgpt#chatbuf#AppendError(buf, QuoteCodeBlock(resptype, resp) .. (status < 0 ? '' : "\nStatus code: " .. status))
   endtry
 enddef

@@ -41,11 +41,15 @@ export def RequestChat(id: number, model: string, messages: list<dict<string>>, 
     messages: messages,
     stream: true,
   }, (buf, id_, resp) => {
-    const r: dict<string> = json_decode(resp).choices[0].delta
-    if has_key(r, 'content')
-      response ..= r.content
-      OnUpdate(buf, id_, response)
-    endif
+    try
+      const r: dict<string> = json_decode(resp).choices[0].delta
+      if has_key(r, 'content')
+        response ..= r.content
+        OnUpdate(buf, id_, response)
+      endif
+    catch
+      OnError(buf, id_, resp, -1)
+    endtry
   }, (buf, id_, rs, status) => {
     if status != 0 && response == ''
       OnError(buf, id_, rs->join("\n"), status)
