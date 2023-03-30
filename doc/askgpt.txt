@@ -119,7 +119,8 @@ AI behavior~
 	Type: |String|
 	Default:
 	    You are AskGPT.vim, an AI conversation assistant.
-	    Answer very concise and clear, shorter than 80 chars per line.
+	    Answer very concisely and clearly.
+
 	    Chat syntax: markdown
 	    File types user is editing: {filetypes}
 

@@ -7,7 +7,8 @@ g:askgpt_history_size = get(g:, 'askgpt_history_size', 10)
 g:askgpt_model        = get(g:, 'askgpt_model', 'gpt-3.5-turbo')
 g:askgpt_prompt       = get(g:, 'askgpt_prompt', join([
   "You are AskGPT.vim, an AI conversation assistant.",
-  "Answer very concise and clear, shorter than 80 chars per line.",
+  "Answer very concisely and clearly.",
+  "",
   "Chat syntax: markdown",
   "File types user is editing: {filetypes}",
 ], "\n"))
