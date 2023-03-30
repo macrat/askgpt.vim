@@ -124,7 +124,7 @@ def ShareRange(buf: number, range: dict<any>)
     '',
   ], "\n"))
 
-  exec ':' .. (msg.lnum + 6) .. ',' .. (msg.lnum + 5 + len(contents)) .. 'fold'
+  silent! exec ':' .. (msg.lnum + 6) .. ',' .. (msg.lnum + 5 + len(contents)) .. 'fold'
   norm Gzb
 enddef
 
