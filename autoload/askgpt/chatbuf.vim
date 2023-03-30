@@ -44,17 +44,26 @@ def AppendUserPrompt(buf: number): dict<any>
   endif
 
   appendbufline(buf, GetLineCount(buf), prompt)
-  prop_add(GetLineCount(buf) - 1, 1, {
-    bufnr: buf,
-    id:    message_id,
-    type:  'askgpt_message',
-  })
+  SetProp(buf, GetLineCount(buf) - 1, message_id, 'message')
 
   return {
     id:   message_id,
     lnum: GetLineCount(buf) - 1,
     name: 'User',
   }
+enddef
+
+def SetProp(buf: number, lnum: number, id: number, type: string)
+  try
+    prop_type_add('askgpt_' .. type, {bufnr: buf})
+  catch
+  endtry
+
+  prop_add(lnum, 1, {
+    bufnr: buf,
+    id:    message_id,
+    type:  'askgpt_' .. type,
+  })
 enddef
 
 def AppendMessage(buf: number, name: string, content: string): dict<any>
@@ -69,11 +78,7 @@ def WriteMessage(buf: number, lnum: number, name: string, content: string): dict
   appendbufline(buf, lnum - 1, ['[__' .. name .. '__]'] + contents)
 
   ++message_id
-  prop_add(lnum, 1, {
-    bufnr: buf,
-    id:    message_id,
-    type:  'askgpt_message',
-  })
+  SetProp(buf, lnum, message_id, 'message')
 
   silent! exec ':' .. lnum .. ',' .. (lnum + len(contents)) .. 'fold | :' .. (lnum + 1) .. 'foldopen'
 
@@ -112,11 +117,7 @@ enddef
 
 export def AppendLoading(buf: number): dict<any>
   const prop = AppendMessage(buf, 'Assistant', indicators[get(b:, 'askgpt_indicator_phase', 0)])
-  prop_add(prop.lnum + 1, 1, {
-    bufnr: buf,
-    id:    prop.id,
-    type:  'askgpt_indicator',
-  })
+  SetProp(buf, prop.lnum + 1, prop.id, 'indicator')
 
   b:askgpt_loading_text = getbufvar(buf, 'askgpt_loading_text', {})
 
@@ -158,11 +159,7 @@ def UpdateOneTextProp(buf: number, lnum: number): number
   endif
 
   ++message_id
-  prop_add(lnum, 1, {
-    bufnr: buf,
-    id:    message_id,
-    type:  'askgpt_message',
-  })
+  SetProp(buf, lnum, message_id, 'message')
   return message_id
 enddef
 
@@ -273,11 +270,7 @@ export def Discard(buf: number, id: number): bool
   endif
 
   ln->substitute(marker_pattern, '[~~\1~~]', '')->setbufline(buf, prop.lnum)
-  prop_add(prop.lnum, 1, {
-    bufnr: buf,
-    id:    id,
-    type:  'askgpt_message',
-  })
+  SetProp(buf, prop.lnum, id, 'message')
 
   return true
 enddef
@@ -354,11 +347,7 @@ def UpdateIndicator(buf: number, id: number)
   deletebufline(buf, start.lnum + 1, end.lnum)
   appendbufline(buf, start.lnum, contents)
 
-  prop_add(start.lnum + len(contents), 1, {
-    bufnr: buf,
-    id:    id,
-    type:  'askgpt_indicator',
-  })
+  SetProp(buf, start.lnum + len(contents), id, 'indicator')
 
   timer_start(100, (timer) => UpdateIndicator(buf, id))
 enddef

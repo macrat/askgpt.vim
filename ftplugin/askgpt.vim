@@ -5,12 +5,6 @@ if exists('b:did_ftplugin')
 endif
 b:did_ftplugin = 1
 
-try
-  prop_type_add('askgpt_message', {bufnr: bufnr()})
-  prop_type_add('askgpt_indicator', {bufnr: bufnr()})
-catch
-endtry
-
 askgpt#TextChanged()
 augroup askgpt-internal
   au!
