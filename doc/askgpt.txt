@@ -72,6 +72,22 @@ COMMANDS                                                     *askgpt-commands*
 ------------------------------------------------------------------------------
 OPTIONS                                                       *askgpt-options*
 
+AI behavior:
+  |g:askgpt_api_key|
+  |g:askgpt_history_size|
+  |g:askgpt_model|
+  |g:askgpt_prompt|
+
+UI preference:
+  |g:askgpt_file_name|
+  |g:askgpt_use_default_maps|
+
+Environment setting:
+  |g:askgpt_curl_command|
+
+
+AI behavior~
+
 *g:askgpt_api_key*
 	Type: |String|
 
@@ -122,6 +138,26 @@ OPTIONS                                                       *askgpt-options*
 
 	{time} is replaced by the current time in HH:MM format.
 
+
+UI preference~
+
+*g:askgpt_file_name*
+	Type: |String|
+	Default: askgpt-%Y%m%dT%H%M%S.md
+
+	Default file name for a chat buffer.
+	This value will be passed to |strftime()| before use as a buffer name.
+
+*g:askgpt_use_default_maps*
+	Type: |Boolean|
+	Default: v:true
+
+	Use default key mappings in a chat buffer.
+	Please see also |askgpt-mappings|.
+
+
+Environment setting~
+
 *g:askgpt_curl_command*
 	Type: |List| of |String|s
 	Default: ["curl"]
@@ -133,13 +169,6 @@ OPTIONS                                                       *askgpt-options*
 			\ "curl",
 			\ "--proxy", "http://example.com",
 			\ ]
-
-*g:askgpt_use_default_maps*
-	Type: |Boolean|
-	Default: v:true
-
-	Use default key mappings in a chat buffer.
-	Please see also |askgpt-mappings|.
 
 ------------------------------------------------------------------------------
 Mappings                                                     *askgpt-mappings*

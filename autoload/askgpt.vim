@@ -35,7 +35,9 @@ enddef
 
 export def Create(prompt='', useRange=false, rangeFrom=0, rangeTo=0)
   const range = useRange ? CaptureRange(rangeFrom, rangeTo) : null_dict
-  exec 'new ' .. strftime('%Y%m%d%H%M%S.askgpt.md')
+  exec 'new ' .. strftime(g:askgpt_file_name)
+  set ft=askgpt.markdown
+  append(0, '<!-- vim: set ft=askgpt.markdown : -->')
   PostOpen(prompt, range)
 enddef
 

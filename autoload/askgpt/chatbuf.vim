@@ -106,7 +106,8 @@ export def AppendShare(buf: number, content: string): dict<any>
 enddef
 
 export def AppendSystemPrompt(buf: number, content: string): dict<any>
-  const msg = WriteMessage(buf, 1, 'Prompt', content)
+  const lnum = getbufoneline(buf, 1) =~ 'vim:' ? 2 : 1
+  const msg = WriteMessage(buf, lnum, 'Prompt', content)
   silent! exec ':' .. msg.lnum .. 'foldclose'
   return msg
 enddef

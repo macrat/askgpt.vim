@@ -39,11 +39,12 @@ command -buffer AskGPTCancel askgpt#Cancel()
 
 
 setl foldmethod=manual foldlevel=2 foldtext=FoldText()
-if getline(1) == '[__Prompt__]'
+const promptline = index(getline(1, 5), '[__Prompt__]')
+if promptline >= 0
+  exec ':' .. (promptline + 1)
   const next = search('\C^\[__[A-Z][a-z]\+__\]$', 'nW')
   if next > 0
-    :1
-    exec ':1,' .. (next - 1) .. 'fold'
+    exec ':' .. (promptline + 1) .. ',' .. (next - 1) .. 'fold'
   endif
 endif
 :$
