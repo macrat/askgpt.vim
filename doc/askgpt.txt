@@ -115,6 +115,31 @@ AI behavior~
 	Please see the latest model list on the OpenAI's document:
 	https://platform.openai.com/docs/models/model-endpoint-compatibility
 
+*g:askgpt_temperature*
+	Type: |Number|
+	Default: 1
+
+	The temperature parameter of the OpenAI API, between 0 to 2.
+
+	Setting a lower value makes predictable responses, and higher value
+	makes more random responses.
+
+	Detail:
+	https://platform.openai.com/docs/api-reference/chat/create#chat/create-temperature
+
+*g:askgpt_top_p*
+	Type: |Number|
+	Default: 1
+
+	The top_p parameter for the OpenAI API, between 0 to 1.
+
+	This value is similar to |g:askgpt_temperature|.
+	Setting lower value let AI to choose more likely words, and higher
+	value allows AI to choose less likely words.
+
+	Detail:
+	https://platform.openai.com/docs/api-reference/chat/create#chat/create-top_p
+
 *g:askgpt_prompt*
 	Type: |String|
 	Default:

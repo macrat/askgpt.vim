@@ -5,6 +5,8 @@ command -nargs=? -range -bang AskGPT if "<bang>" == "" | askgpt#Open(<q-args>, <
 g:askgpt_api_key      = get(g:, 'askgpt_api_key', '')
 g:askgpt_history_size = get(g:, 'askgpt_history_size', 10)
 g:askgpt_model        = get(g:, 'askgpt_model', 'gpt-3.5-turbo')
+g:askgpt_temperature  = get(g:, 'askgpt_temperature', 1)
+g:askgpt_top_p        = get(g:, 'askgpt_top_p', 1)
 g:askgpt_prompt       = get(g:, 'askgpt_prompt', join([
   "You are AskGPT.vim, an AI conversation assistant.",
   "Answer very concisely and clearly.",

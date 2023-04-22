@@ -156,6 +156,8 @@ export def Submit()
   askgpt#api#RequestChat(
     indicator.id,
     g:askgpt_model,
+    g:askgpt_temperature,
+    g:askgpt_top_p,
     prompt + askgpt#chatbuf#GetHistory(g:askgpt_history_size),
     OnUpdate,
     OnFinish,
