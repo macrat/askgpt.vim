@@ -119,6 +119,7 @@ enddef
 export def AppendLoading(buf: number): dict<any>
   const prop = AppendMessage(buf, 'Assistant', indicators[get(b:, 'askgpt_indicator_phase', 0)])
   SetProp(buf, prop.lnum + 1, prop.id, 'indicator')
+  SetProp(buf, prop.lnum, prop.id, 'loading')
 
   b:askgpt_loading_text = getbufvar(buf, 'askgpt_loading_text', {})
 
@@ -298,6 +299,12 @@ export def GetHistory(max: number): list<dict<string>>
     const prop = prop_find({type: 'askgpt_message', lnum: lnum, skipstart: true}, 'b')
     if len(prop) == 0
       break
+    endif
+
+    const isloading = prop_list(prop.lnum, {types: ['askgpt_loading']})->len() > 0
+    if isloading
+      lnum = prop.lnum
+      continue
     endif
 
     const name = getbufoneline(bufnr(), prop.lnum)->substitute('\C^\[__\(User\|Assistant\|Share\)__\]$', '\1', '')
