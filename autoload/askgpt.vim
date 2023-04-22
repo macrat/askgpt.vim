@@ -148,17 +148,24 @@ export def Submit()
 
   const indicator = askgpt#chatbuf#AppendLoading(bufnr())
 
-  const prompt = [{
-    role: 'system',
+  final prompt = [{
+    role:    'system',
     content: GeneratePrompt(),
   }]
+  var max_chars = g:askgpt_max_characters - strchars(prompt[0].content)
+  var max_msgs = g:askgpt_max_messages
+  if max_chars < 0 && g:askgpt_max_characters > 0
+    max_chars = 0
+    max_msgs = 1
+    remove(prompt, 0)
+  endif
 
   askgpt#api#RequestChat(
     indicator.id,
     g:askgpt_model,
     g:askgpt_temperature,
     g:askgpt_top_p,
-    prompt + askgpt#chatbuf#GetHistory(g:askgpt_history_size),
+    prompt + askgpt#chatbuf#GetHistory(max_msgs, max_chars),
     OnUpdate,
     OnFinish,
     OnError,

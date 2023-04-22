@@ -288,14 +288,15 @@ export def GetSystemPrompt(buf: number): string
   return getbufline(buf, prop.lnum + 1, (get(next, 'lnum', 1) - 1) ?? '$')->join("\n")->trim("\n")
 enddef
 
-export def GetHistory(max: number): list<dict<string>>
+export def GetHistory(max_msgs: number, max_chars: number): list<dict<string>>
   UpdateTextProps(bufnr())
 
   var lnum = prop_find({type: 'askgpt_message', lnum: line('$')}, 'b').lnum
 
   final msgs: list<dict<string>> = []
+  var chars = 0
 
-  while len(msgs) < max
+  while len(msgs) < max_msgs || max_msgs <= 0
     const prop = prop_find({type: 'askgpt_message', lnum: lnum, skipstart: true}, 'b')
     if len(prop) == 0
       break
@@ -319,9 +320,17 @@ export def GetHistory(max: number): list<dict<string>>
       'Share':     'system',
     }[name]
 
+    const content = getline(prop.lnum + 1, lnum - 1)->join("\n")->trim("\n")
+
+    chars += strchars(content)
+
+    if max_chars > 0 && chars > max_chars && len(msgs) > 0
+      break
+    endif
+
     insert(msgs, {
       role:    role,
-      content: getline(prop.lnum + 1, lnum - 1)->join("\n")->trim("\n"),
+      content: content,
     })
 
     lnum = prop.lnum

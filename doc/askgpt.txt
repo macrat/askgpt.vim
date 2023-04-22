@@ -74,8 +74,11 @@ OPTIONS                                                       *askgpt-options*
 
 AI behavior:
   |g:askgpt_api_key|
-  |g:askgpt_history_size|
+  |g:askgpt_max_characters|
+  |g:askgpt_max_letters|
   |g:askgpt_model|
+  |g:askgpt_temperature|
+  |g:askgpt_top_p|
   |g:askgpt_prompt|
 
 UI preference:
@@ -94,17 +97,41 @@ AI behavior~
 	An OpenAI API key.
 	You can get one from https://platform.openai.com/.
 
-*g:askgpt_history_size*
+*g:askgpt_max_characters*
 	Type: |Number|
-	Default: 10
+	Default: 10000
 
-	The maximum number of history to provide to ChatGPT.
+	The maximum characters count of history to provide to ChatGPT.
 	The number includes your messages, AI's messages, and codes that you
 	shared via |:AskGPT| command.
 
 	To make it larger provides more information to AI, but it consumes a
 	lot of tokens that you have to pay for them.
 	To make it smaller provides less information, and it costs less.
+
+	The default value 10000 is aimed for English and some source codes.
+	However, this is very depends on what you ask and what AI responses.
+	1000 is usually too large to non-English languages or complex codes.
+	It is recommended to optimise to your usage.
+
+	0 means unlimited.
+
+	seealso: |g:askgpt_max_messages|
+
+*g:askgpt_max_messages*
+	Type: |Number|
+	Default: 10
+
+	The maximum number of messages in history to provide to ChatGPT.
+	The number includes your messages, AI's messages, and codes that you
+	shared via |:AskGPT| command.
+
+	This option is similar to |g:askgpt_max_characters| but it limits the
+	number of messages.
+
+	0 means unlimited.
+
+	Please see also: |g:askgpt_max_characters|
 
 *g:askgpt_model*
 	Type: |String|
