@@ -143,8 +143,8 @@ AI behavior~
 	https://platform.openai.com/docs/models/model-endpoint-compatibility
 
 *g:askgpt_temperature*
-	Type: |Number|
-	Default: 1
+	Type: |Float|
+	Default: 1.0
 
 	The temperature parameter of the OpenAI API, between 0 to 2.
 
@@ -155,8 +155,8 @@ AI behavior~
 	https://platform.openai.com/docs/api-reference/chat/create#chat/create-temperature
 
 *g:askgpt_top_p*
-	Type: |Number|
-	Default: 1
+	Type: |Float|
+	Default: 1.0
 
 	The top_p parameter for the OpenAI API, between 0 to 1.
 

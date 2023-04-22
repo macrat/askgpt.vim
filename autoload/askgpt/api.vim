@@ -33,7 +33,7 @@ def Request(id: number, endpoint: string, payload: dict<any>, OnMessage: func(nu
   ch_close_in(channel)
 enddef
 
-export def RequestChat(id: number, model: string, temperature: number, top_p: number, messages: list<dict<string>>, OnUpdate: func(number, number, string), OnFinish: func(number, number, string), OnError: func(number, number, string, number))
+export def RequestChat(id: number, model: string, temperature: float, top_p: float, messages: list<dict<string>>, OnUpdate: func(number, number, string), OnFinish: func(number, number, string), OnError: func(number, number, string, number))
   var response = ''
 
   Request(id, '/v1/chat/completions', {
